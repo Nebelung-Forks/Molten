@@ -1,2 +1,2 @@
 # Molten
-Project made to create a gateway to the blocked web.
+The truest gateway to evading censorship.
