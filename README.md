@@ -1,2 +1,2 @@
 # molten
-Molten Proxy is a reverse proxy coded in node.js to satisfy all our needs.
+Project made to create a gateway to the blocked web.
