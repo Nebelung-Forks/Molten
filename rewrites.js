@@ -74,9 +74,28 @@ window.open = new Proxy(window.open, {
 
 window.XMLHttpRequest.prototype.open = new Proxy(window.XMLHttpRequest.prototype.open, {
 	apply: (target, thisArg, args) => {
-		args[1] = rewrites.url(args[1]);
+		args[1] = url(args[1]);
 
 		return Reflect.apply(target, thisArg, args);
     }
 });
 */
+
+// Delete non-proxified objects so requests don't escape the proxy
+
+// WebSocket
+delete window.WebSocket;
+
+// WebRTC
+delete window.MediaStreamTrack; 
+delete window.RTCPeerConnection;
+delete window.RTCSessionDescription;
+delete window.mozMediaStreamTrack;
+delete window.mozRTCPeerConnection;
+delete window.mozRTCSessionDescription;
+delete window.navigator.getUserMedia;
+delete window.navigator.mozGetUserMedia;
+delete window.navigator.webkitGetUserMedia;
+delete window.webkitMediaStreamTrack;
+delete window.webkitRTCPeerConnection;
+delete window.webkitRTCSessionDescription;
