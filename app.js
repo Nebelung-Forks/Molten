@@ -28,7 +28,7 @@ module.exports = class {
             method: req.method
         };
 
-        var sendReq = (url.scheme).request(url, reqOptions, (clientResp, rawData = [], sendData = '') => cientResp.on('data', data => streamData.push(data)).on('end', () => {
+        var sendReq = (url.scheme).request(url, reqOptions, (clientResp, rawData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
             clientResp.headers['content-encoding'].split`, `.forEach(enc => {
                 switch (enc) {
                     case 'gzip': 
