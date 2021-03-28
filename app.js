@@ -1,9 +1,9 @@
-const https = require`https`,
-    http = require`http`,
-    zlib = require`zlib`,
-    URL = require`url`,
-    fs = require`fs`,
-    rewrites = require`./rewrites`;
+const https = require('https'),
+    http = require('http'),
+    zlib = require('zlib'),
+    URL = require('url'),
+    fs = require('fs'),
+    rewrites = require('./rewrites');
 
 module.exports = class {
     constructor(data = {}) {
@@ -46,15 +46,12 @@ module.exports = class {
                 };
             })
 
-            Object.entries(clientResp.headers).forEach((key, val) => key.startsWith`cf-` || key.startsWith`x-` || key=='content-security-policy' || key=='strict-transport-security' || key=='content-encoding' || key=='content-length' ? delete self.key[val] : clientResp.headers[key] = rewrites.header(val));
+            Object.entries(clientResp.headers).forEach((key, val) => key.startsWith`cf-` || key.startsWith`x-` || key == 'content-security-policy' || key == 'strict-transport-security' || key == 'content-encoding' || key == 'content-length' ? delete self.key[val] : clientResp.headers[key] = rewrites.header(val));
 
-            switch(clientResp.headers) {
-            case 'text/html':
-                sendData = rewrites.html(sendData); break;
-            case 'text/css': 
-                sendData = rewrites.css(sendData); break;
-            case 'text/css' || 'application/javascript' || 'application/x-javascript': 
-                sendData = rewrites.js(sendData); break;
+            switch(clientResp.headers['content-type']) {
+            case 'text/html': sendData = rewrites.html(sendData); break;
+            case 'text/css': sendData = rewrites.css(sendData); break;
+            case 'text/css' || 'application/javascript' || 'application/x-javascript': sendData = rewrites.js(sendData);
             // case 'application/json':
             }
 

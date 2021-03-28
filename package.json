@@ -5,6 +5,6 @@
     "license": "BSD-3-Clause",
     "repository": "github:titaniumnetwork-dev/Molten",
     "dependencies": {
-        "jsdom": "latest"
+        "jsdom": "^16.5.2"
     }
 }
