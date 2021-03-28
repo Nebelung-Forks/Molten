@@ -1,107 +1,101 @@
-// TODO: Make this into a module
+const server = typeof exports !== 'undefined' && this.exports !== exports
 
-var fs = require`fs`,
-    jsdom = require`jsdom`;
+if (server) const fs = require`fs`, DOMParser = require`jsdom`.JSDOM;
 
-// Rewrite Utility Code
+var rewrites; 
 
-function header(key, val) {
-    switch(key) {
-    // Request headers
-    case 'host':
-    // Response headers
-    case 'location': url(val);
-    case 'set-cookie': cookie(val);
-    }
-
-    return val;
-}
-function url(data) {
-    for (proto of ['http', 'https']) {
-        if(data.split`:`!=protocol&&protocol.length==2)return protocol;
-    }
-
-    return data;
-}
-function cookie(data) {
-    data.split`; `.forEach(exp => {
-        split = exp.split`=`;
-
-        if (split.length == 2) {
-            switch (split[0]) {
-            case "domain": break;
-            case "path":
-            }
+(server ? module.exports: rewrites) = {
+    cookie: {
+        construct: (data) => {
+            data.split`; `.forEach(exp => {
+                split = exp.split`=`;
+        
+                if (split.length == 2) {
+                    switch (split[0]) {
+                    case "domain": break;
+                    case "path":
+                    }
+                }
+        
+                return split.join`=`;
+            });
+        },
+        deconstruct: (data) => {
+            // Currently unsupported
+        }
+    },
+    header: (key, val) => {
+        switch(key) {
+            // Request headers
+            // case 'cookie': cookie.deconstruct(val);
+            // case 'host':
+            // Response headers
+            case 'location': 
+                this.url(val); break;
+            case 'set-cookie': this.cookie.construct(val);
         }
 
-        return split.join`=`;
-    })
-}
-function html(data) {
-    var dom = new JSDOM().parseFromString(data,'text/html'), 
-        sel = dom.querySelector`*`;
-
-    sel.querySelectorAll`*`.forEach(node => {
-        switch(node.tagName) {
-        case'STYLE': 
-            node.textContent = css(node.textContent);
-
-            break;
-        case'SCRIPT': node.textContent = js(node.textContent);
+        return val
+    },
+    url: url => {
+        for (proto of ['http', 'https']) {
+            if(url.split`:` != protocol && protocol.length == 2) return protocol;
         }
-
-        node.getAttributeNames().forEach(attr => {
-            switch (attr) {
-            case'nonce'||'integrity':
-                node.removeAttribute(attr);
-
-                break;
-            case'href'||'xlink:href'||'src'||'action'||'content'||'data'||'poster': 
-                node.setAttribute(self.url(node.getAttribute(attr)));
-
-                break;
-            case'srcset': 
-                node.getAttribute(attr).split`, `.map((val, i) => i%2&&url(val)).filter(a => a).join`, `;
-
-                break;
-            case'srcdoc': 
-                node.setAttribute(html(node.getAttribute(attr)));
-
-                break;
-            case'style': 
-                node.setAttribute(css(node.getAttribute(attr)));
-
-                break;
-            case'on-*': node.setAttribute(js(node.getAttribute(attr)));
+    
+        return url;
+    },
+    // manifest:
+    html: body => {
+        new DOMParser().parseFromString(body, 'text/html').querySelector`*`.sel.querySelectorAll`*`.forEach(node => {
+            // TODO: Add <script src="/inject"></script> after head
+            switch(node.tagName) {
+            case'STYLE': 
+                node.textContent = css(node.textContent); break;
+            case'SCRIPT': node.textContent = js(node.textContent);
             }
+
+            node.getAttributeNames().forEach(attr => {
+                switch (attr) {
+                case'nonce'||'integrity':
+                    node.removeAttribute(attr); break;
+                case'href'||'xlink:href'||'src'||'action'||'content'||'data'||'poster': 
+                    node.setAttribute(this.url(node.getAttribute(attr))); break;
+                case'srcset': 
+                    node.getAttribute(attr).split`, `.map((val, i) => i % 2 && this.url(val)).filter(a => a).join`, `; break;
+                case'srcdoc': 
+                    node.setAttribute(attr, this.html(node.getAttribute(attr))); break;
+                case'style': 
+                    node.setAttribute(attr, this.css(node.getAttribute(attr))); break;
+                case'on-*': node.setAttribute(this.js(node.getAttribute(attr)));
+                }
+            });
+
+            inject = document.createElement`SCRIPT`;
+            inject.setAttribute('src', '/inject');
+            node.getElementsByTagName`head`[0]
         });
-    });
 
-    return sel.innerHTML;
-}
-function css(data) {
-    return data.replace(/(?<=url\((?<a>["']?)).*?(?=\k<a>\))|(?<=@import *(?<b>"|')).*?(?=\k<b>.*?;)/g, url(data))
-}
-function js(data) {
-    return `{let document=proxifiedDocument;${data.replace(/proxifiedDocument/g, 'document')}`
-}
+        return sel.innerHTML;
+    },
+    css: body => body.replace(/(?<=url\((?<a>["']?)).*?(?=\k<a>\))|(?<=@import *(?<b>"|')).*?(?=\k<b>.*?;)/g, this.url(body)),
+    js: body => `{let document=proxifiedDocument;${body.replace(/proxifiedDocument/g, 'document')}`
+};
 
 // Document object
 
 proxifiedDocument = new Proxy(document, {
-    get: (target, prop) => {
+    get: (target, prop) => (prop == 'cookie' ? rewrites.cookie.deconstruct(target) : typeof(prop = Reflect.get(target, prop)) == 'function' ? prop.bind(target) : prop),
+    set: (target, prop) => {
         switch (prop) {
-        case 'location': break;
-        case 'referrer'||'URL': Reflect.get(target, prop);
+            case 'location' || 'referrer' || 'URL': return rewrites.url(target);
+            case 'cookie': return rewrites.cookie.construct(target);
         }
-
-        return typeof(prop=Reflect.get(target, prop))=='function'?prop.bind(target):prop;
     }
 });
 
 document.write = new Proxy(document.write, {
-    apply: (target, thisArg, args) => {
-        args[0] = html(args[0]);
+    apply(target, thisArg, args) {
+        args[0] = rewrites.html(args[0]);
 
         return Reflect.apply(target, thisArg, args);
     }
@@ -110,16 +104,16 @@ document.write = new Proxy(document.write, {
 // Window object
 
 window.fetch = new Proxy(window.fetch, {
-    apply: (target,thisArg,args) => {
-        args[0] = url(args[0]);
+    apply(target,thisArg,args) {
+        args[0] = rewrites.url(args[0]);
 
         return Reflect.apply(target, thisArg, args);
     }
 });
 
 const historyHandler = {
-    apply: (target, thisArg, args) => {
-        args[2] = url(args[2]);
+    apply(target, thisArg, args) {
+        args[2] = rewrites.url(args[2]);
 
         return Reflect.apply(target, thisArg, args);
     }
@@ -129,32 +123,46 @@ window.History.prototype.pushState = new Proxy(window.History.prototype.pushStat
 window.History.prototype.replaceState = new Proxy(window.History.prototype.replaceState, historyHandler);
 
 window.Navigator.prototype.sendBeacon = new Proxy(window.Navigator.prototype.sendBeacon, {
-    apply: (target, thisArg, args) => {
-        args[0] = url(args[0]);
+    apply(target, thisArg, args) {
+        args[0] = rewrites.url(args[0]);
 
         return Reflect.apply(target, thisArg, args);
     }
 }); 
 
 window.open = new Proxy(window.open, {
-    apply: (target, thisArg, args) => {
-        args[0] = url(args[0]);
+    apply(target, thisArg, args) {
+        args[0] = rewrites.url(args[0]);
 
         return Reflect.apply(target, thisArg, args);
     }
 });
 
-window.WebSocket = new Proxy(window.WebSocket, {
-    construct: (target, args) => {
-        // Websocket connections are currently unsupported
+window.postMessage = new Proxy(window.postMessage, {
+    apply(target, thisArg, args) {
+        args[1] = location.origin;
 
-        Reflect.construct(target, args);
+        return Reflect.apply(target, thisArg, args)
+    }
+});
+
+window.WebSocket = new Proxy(window.WebSocket, {
+    construct(target, args) {
+        // Websocket connections are currently unsupported
+    }
+});
+
+window.Worker = new Proxy(window.Worker, {
+    construct(target, args) {
+        args[0] = rewrites.url(args[0]);
+
+        return Reflect.construct(target, args);
     }
 });
  
 window.XMLHttpRequest.prototype.open = new Proxy(window.XMLHttpRequest.prototype.open, {
-    apply: (target, thisArg, args) => {
-        args[1] = url(args[1]);
+    apply(target, thisArg, args) {
+        args[1] = rewrites.url(args[1]);
 
         return Reflect.apply(target, thisArg, args);
     }
