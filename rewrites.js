@@ -46,3 +46,37 @@ function html(data) {
 function css(data) {
     return data.replace(/(?<=url\((?<a>["']?)).*?(?=\k<a>\))/gi, url);
 }
+
+/*
+window.Navigator.prototype.sendBeacon = new Proxy(window.Navigator.prototype.sendBeacon, {
+    apply: (target, thisArg, args) => {
+		args[0] = url(args[0]);
+		
+		return Reflect.apply(target, thisArg, args);
+    }
+});
+
+window.fetch = new Proxy(window.fetch, {
+	apply: (target, thisArg, args) => {
+		args[0] = url(args[0]);
+
+		return Reflect.apply(target, thisArg, args);
+    }
+});
+
+window.open = new Proxy(window.open, {
+    apply: (target, thisArg, args) => {
+		args[0] = url(args[0]);
+
+		return Reflect.apply(target, thisArg, args);
+    }
+});
+
+window.XMLHttpRequest.prototype.open = new Proxy(window.XMLHttpRequest.prototype.open, {
+	apply: (target, thisArg, args) => {
+		args[1] = rewrites.url(args[1]);
+
+		return Reflect.apply(target, thisArg, args);
+    }
+});
+*/
