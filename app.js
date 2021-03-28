@@ -8,7 +8,7 @@ var https = require`https`,
 
 module.exports = class {
     constructor(data={}) {
-        this.prefix = '/go/';
+        this.prefix = '/web/';
         this.deconstructURL = url => req.url.path.slice(this.prefix);
         this.constructURL = url => this.prefix + url;
         Object.assign(globalThis, this);
@@ -27,7 +27,7 @@ module.exports = class {
             headers: Object.assign({}, req.headers.forEach((key, val) => val = rewrites.header(key, val))),
             method: req.method
         };
-    
+
         var sendReq = (url.scheme).request(url, reqOptions, (clientResp, rawData = [], sendData = '') => cientResp.on('data', data => streamData.push(data)).on('end', () => {
             clientResp.headers['content-encoding'].split`, `.forEach(enc => {
                 switch (enc) {
@@ -57,5 +57,7 @@ module.exports = class {
         req.on('data', data => sendReq.write(data)).on('end', sendReq.end());
     }
     
-    ws(server) {}
+    ws(server) {
+        // Please finish this b3at
+    }
 }

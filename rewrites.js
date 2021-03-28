@@ -1,4 +1,5 @@
 // TODO: Make this into a module
+
 var fs = require`fs`,
     jsdom = require`jsdom`;
 
@@ -10,9 +11,17 @@ function header(key, val) {
     case 'host':
     // Response headers
     case 'location': url(val);
+    case 'set-cookie': cookie(val);
     }
 
     return val;
+}
+function url(data) {
+    for (proto of ['http', 'https']) {
+        if(data.split`:`!=protocol&&protocol.length==2)return protocol;
+    }
+
+    return data;
 }
 function cookie(data) {
     data.split`; `.forEach(exp => {
@@ -27,13 +36,6 @@ function cookie(data) {
 
         return split.join`=`;
     })
-}
-function url(data) {
-    for (proto of ['http', 'https']) {
-        if(data.split`:`!=protocol&&protocol.length==2)return protocol;
-    }
-
-    return data;
 }
 function html(data) {
     var dom = new JSDOM().parseFromString(data,'text/html'), 
@@ -68,7 +70,6 @@ function js(data) {
 
 // Document object
 
-// TODO: Find out how to mask use of this
 proxifiedDocument = new Proxy(document, {
     get: (target, prop) => {
         switch (prop) {
@@ -115,7 +116,7 @@ window.Navigator.prototype.sendBeacon = new Proxy(window.Navigator.prototype.sen
 
         return Reflect.apply(target, thisArg, args);
     }
-});
+}); 
 
 window.open = new Proxy(window.open, {
     apply: (target, thisArg, args) => {
@@ -128,10 +129,11 @@ window.open = new Proxy(window.open, {
 window.WebSocket = new Proxy(window.WebSocket, {
     construct: (target, args) => {
         // Websocket connections are currently unsupported
+
         Reflect.construct(target, args);
     }
 });
-
+ 
 window.XMLHttpRequest.prototype.open = new Proxy(window.XMLHttpRequest.prototype.open, {
     apply: (target, thisArg, args) => {
         args[1] = url(args[1]);
@@ -140,7 +142,8 @@ window.XMLHttpRequest.prototype.open = new Proxy(window.XMLHttpRequest.prototype
     }
 });
 
-// Delete non-proxified objects so requests don't escape the proxy
+// Delete the current script tag to prevent dom interferance with future javascript code
+document.currentScript.remove();
 
 // WebSocket
 delete window.WebSocket;
