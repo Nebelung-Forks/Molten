@@ -1,0 +1,10 @@
+{
+    "name": "molten",
+    "description": "The truest gateway to evading censorship",
+    "main": "app.js",
+    "license": "BSD-3-Clause",
+    "repository": "github:titaniumnetwork-dev/Molten",
+    "dependencies": {
+        "jsdom": "latest"
+    }
+}
