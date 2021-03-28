@@ -49,7 +49,7 @@ function html(data) {
             switch (attr) {
             case'nonce'||'integrity': node.removeAttribute(attr);
             case'href'||'xlink:href'||'src'||'action'||'content'||'data'||'poster': node.setAttribute(self.url(node.getAttribute(attr)));
-            case'srcset': node.getAttribute(attr).split`, `.map((val,i) => i%2&&url(val)).filter(a => a).join`, `;
+            case'srcset': node.getAttribute(attr).split`, `.map((val, i) => i%2&&url(val)).filter(a => a).join`, `;
             case'srcdoc': node.setAttribute(html(node.getAttribute(attr)));
             case'style': node.setAttribute(css(node.getAttribute(attr)));
             case'on-*': node.setAttribute(js(node.getAttribute(attr)));
@@ -60,31 +60,31 @@ function html(data) {
     return sel.innerHTML;
 }
 function css(data) {
-    return data.replace(/(?<=url\((?<a>["']?)).*?(?=\k<a>\))/gi, url(data))
+    return data.replace(/(?<=url\((?<a>["']?)).*?(?=\k<a>\))|(?<=@import *(?<b>"|')).*?(?=\k<b>.*?;)/g, url(data))
 }
 function js(data) {
-    return `{let document=proxifiedDocument;${data.replace(/proxifiedDocument/g,'document')}`
+    return `{let document=proxifiedDocument;${data.replace(/proxifiedDocument/g, 'document')}`
 }
 
 // Document object
 
 // TODO: Find out how to mask use of this
 proxifiedDocument = new Proxy(document, {
-    get: (target,prop) => {
+    get: (target, prop) => {
         switch (prop) {
         case 'location':
-        case 'referrer'||'URL': Reflect.get(target,prop);
+        case 'referrer'||'URL': Reflect.get(target, prop);
         }
 
-        return typeof(prop=Reflect.get(target,prop))=='function'?prop.bind(target):prop;
+        return typeof(prop=Reflect.get(target, prop))=='function'?prop.bind(target):prop;
     }
 });
 
 document.write = new Proxy(document.write, {
-    apply: (target,thisArg,args) => {
+    apply: (target, thisArg, args) => {
         args[0] = html(args[0]);
 
-        return Reflect.apply(target,thisArg,args);
+        return Reflect.apply(target, thisArg, args);
     }
 });
 
@@ -94,49 +94,49 @@ window.fetch = new Proxy(window.fetch, {
     apply: (target,thisArg,args) => {
         args[0] = url(args[0]);
 
-        return Reflect.apply(target,thisArg,args);
+        return Reflect.apply(target, thisArg, args);
     }
 });
 
 const historyHandler = {
-    apply: (target,thisArg,args) => {
+    apply: (target, thisArg, args) => {
         args[2] = url(args[2]);
 
-        return Reflect.apply(target,thisArg,args);
+        return Reflect.apply(target, thisArg, args);
     }
 };
 
-window.History.prototype.pushState = new Proxy(window.History.prototype.pushState,historyHandler);
-window.History.prototype.replaceState = new Proxy(window.History.prototype.replaceState,historyHandler);
+window.History.prototype.pushState = new Proxy(window.History.prototype.pushState, historyHandler);
+window.History.prototype.replaceState = new Proxy(window.History.prototype.replaceState, historyHandler);
 
 window.Navigator.prototype.sendBeacon = new Proxy(window.Navigator.prototype.sendBeacon, {
-    apply: (target,thisArg,args) => {
+    apply: (target, thisArg, args) => {
         args[0] = url(args[0]);
 
-        return Reflect.apply(target,thisArg,args);
+        return Reflect.apply(target, thisArg, args);
     }
 });
 
 window.open = new Proxy(window.open, {
-    apply: (target,thisArg,args) => {
+    apply: (target, thisArg, args) => {
         args[0] = url(args[0]);
 
-        return Reflect.apply(target,thisArg,args);
+        return Reflect.apply(target, thisArg, args);
     }
 });
 
 window.WebSocket = new Proxy(window.WebSocket, {
-    construct: (target,args) => {
+    construct: (target, args) => {
         // Websocket connections are currently unsupported
-        Reflect.construct(target,args);
+        Reflect.construct(target, args);
     }
 });
 
 window.XMLHttpRequest.prototype.open = new Proxy(window.XMLHttpRequest.prototype.open, {
-    apply: (target,thisArg,args) => {
+    apply: (target, thisArg, args) => {
         args[1] = url(args[1]);
 
-        return Reflect.apply(target,thisArg,args);
+        return Reflect.apply(target, thisArg, args);
     }
 });
 

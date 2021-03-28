@@ -7,11 +7,11 @@ var https = require`https`,
     rewrites = require`./rewrites`;
 
 module.exports = class {
-    constructor(data={}){
+    constructor(data={}) {
         this.prefix = '/go/';
         this.deconstructURL = url => req.url.path.slice(this.prefix);
         this.constructURL = url => this.prefix + url;
-        Object.assign(globalThis,this);
+        Object.assign(globalThis, this);
     };
 
     http(req, resp) {
@@ -24,11 +24,11 @@ module.exports = class {
         }
 
         var reqOptions = {
-            headers: Object.assign({},req.headers.forEach((key,val) => val = rewrites.header(key,val))),
+            headers: Object.assign({}, req.headers.forEach((key, val) => val = rewrites.header(key, val))),
             method: req.method
         };
     
-        var sendReq = (url.scheme).request(url,reqOptions,(clientResp,rawData = [],sendData = '') => cientResp.on('data',data => streamData.push(data)).on('end', () => {
+        var sendReq = (url.scheme).request(url, reqOptions, (clientResp, rawData = [], sendData = '') => cientResp.on('data', data => streamData.push(data)).on('end', () => {
             clientResp.headers['content-encoding'].split`, `.forEach(enc => {
                 switch (enc) {
                     case 'gzip': sendData = zlib.gunzipSync(Buffer.concat(streamData));
@@ -39,7 +39,7 @@ module.exports = class {
                 };
             })
 
-            Object.entries(clientResp.headers).forEach((key,val) => key.startsWith`cf-`||key.startsWith`x-`||key=='content-security-policy'||key=='strict-transport-security'||key=='content-encoding'||key=='content-length'?delete self.key[val]:clientResp.headers[key]=rewrites.header(val));
+            Object.entries(clientResp.headers).forEach((key, val) => key.startsWith`cf-`||key.startsWith`x-`||key=='content-security-policy'||key=='strict-transport-security'||key=='content-encoding'||key=='content-length'?delete self.key[val]:clientResp.headers[key]=rewrites.header(val));
 
             switch(clientResp.headers) {
             case 'text/html': sendData = rewrites.html(sendData);
@@ -47,14 +47,14 @@ module.exports = class {
             case 'text/css'||'application/javascript'||'application/x-javascript': sendData = rewrites.js(sendData);
             }
 
-            resp.writeHead(clientResp.statusCode,clientResp.headers);
+            resp.writeHead(clientResp.statusCode, clientResp.headers);
 
             resp.end(sendData);
         }));
 
-        sendReq.on('error',err => res.end(err));
+        sendReq.on('error', err => res.end(err));
 
-        req.on('data',data => sendReq.write(data)).on('end',sendReq.end());
+        req.on('data', data => sendReq.write(data)).on('end', sendReq.end());
     }
     
     ws(server) {}
