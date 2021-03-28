@@ -99,7 +99,7 @@ window.fetch = new Proxy(window.fetch, {
 });
 
 const historyHandler = {
-    apply: (target, thisArg, args) => {
+    apply: (target,thisArg,args) => {
         args[2] = url(args[2]);
 
         return Reflect.apply(target,thisArg,args);
@@ -118,7 +118,7 @@ window.Navigator.prototype.sendBeacon = new Proxy(window.Navigator.prototype.sen
 });
 
 window.open = new Proxy(window.open, {
-    apply: (target, thisArg, args) => {
+    apply: (target,thisArg,args) => {
         args[0] = url(args[0]);
 
         return Reflect.apply(target,thisArg,args);
@@ -133,7 +133,7 @@ window.WebSocket = new Proxy(window.WebSocket, {
 });
 
 window.XMLHttpRequest.prototype.open = new Proxy(window.XMLHttpRequest.prototype.open, {
-    apply: (target, thisArg, args) => {
+    apply: (target,thisArg,args) => {
         args[1] = url(args[1]);
 
         return Reflect.apply(target,thisArg,args);

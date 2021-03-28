@@ -24,7 +24,7 @@ module.exports = class {
         }
 
         var reqOptions = {
-            headers: Object.assign({}, req.headers.forEach((key,val) => val = rewrites.header(key,val))),
+            headers: Object.assign({},req.headers.forEach((key,val) => val = rewrites.header(key,val))),
             method: req.method
         };
     
@@ -39,7 +39,7 @@ module.exports = class {
                 };
             })
 
-            Object.entries(clientResp.headers).forEach((key, val) => key.startsWith`cf-`||key.startsWith`x-`||key=='content-security-policy'||key=='strict-transport-security'||key=='content-encoding'||key=='content-length'?delete self.key[val]:clientResp.headers[key]=rewrites.header(val));
+            Object.entries(clientResp.headers).forEach((key,val) => key.startsWith`cf-`||key.startsWith`x-`||key=='content-security-policy'||key=='strict-transport-security'||key=='content-encoding'||key=='content-length'?delete self.key[val]:clientResp.headers[key]=rewrites.header(val));
 
             switch(clientResp.headers) {
             case 'text/html': sendData = rewrites.html(sendData);
