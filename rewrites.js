@@ -29,7 +29,7 @@ function cookie(data) {
 
         if (split.length == 2) {
             switch (split[0]) {
-            case "domain":
+            case "domain": break;
             case "path":
             }
         }
@@ -43,17 +43,35 @@ function html(data) {
 
     sel.querySelectorAll`*`.forEach(node => {
         switch(node.tagName) {
-        case'STYLE': node.textContent = css(node.textContent);
+        case'STYLE': 
+            node.textContent = css(node.textContent);
+
+            break;
         case'SCRIPT': node.textContent = js(node.textContent);
         }
 
         node.getAttributeNames().forEach(attr => {
             switch (attr) {
-            case'nonce'||'integrity': node.removeAttribute(attr);
-            case'href'||'xlink:href'||'src'||'action'||'content'||'data'||'poster': node.setAttribute(self.url(node.getAttribute(attr)));
-            case'srcset': node.getAttribute(attr).split`, `.map((val, i) => i%2&&url(val)).filter(a => a).join`, `;
-            case'srcdoc': node.setAttribute(html(node.getAttribute(attr)));
-            case'style': node.setAttribute(css(node.getAttribute(attr)));
+            case'nonce'||'integrity':
+                node.removeAttribute(attr);
+
+                break;
+            case'href'||'xlink:href'||'src'||'action'||'content'||'data'||'poster': 
+                node.setAttribute(self.url(node.getAttribute(attr)));
+
+                break;
+            case'srcset': 
+                node.getAttribute(attr).split`, `.map((val, i) => i%2&&url(val)).filter(a => a).join`, `;
+
+                break;
+            case'srcdoc': 
+                node.setAttribute(html(node.getAttribute(attr)));
+
+                break;
+            case'style': 
+                node.setAttribute(css(node.getAttribute(attr)));
+
+                break;
             case'on-*': node.setAttribute(js(node.getAttribute(attr)));
             }
         });
@@ -73,7 +91,7 @@ function js(data) {
 proxifiedDocument = new Proxy(document, {
     get: (target, prop) => {
         switch (prop) {
-        case 'location':
+        case 'location': break;
         case 'referrer'||'URL': Reflect.get(target, prop);
         }
 
@@ -116,7 +134,7 @@ window.Navigator.prototype.sendBeacon = new Proxy(window.Navigator.prototype.sen
 
         return Reflect.apply(target, thisArg, args);
     }
-});
+}); 
 
 window.open = new Proxy(window.open, {
     apply: (target, thisArg, args) => {

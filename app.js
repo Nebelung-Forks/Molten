@@ -31,10 +31,22 @@ module.exports = class {
         var sendReq = (url.scheme).request(url, reqOptions, (clientResp, rawData = [], sendData = '') => cientResp.on('data', data => streamData.push(data)).on('end', () => {
             clientResp.headers['content-encoding'].split`, `.forEach(enc => {
                 switch (enc) {
-                    case 'gzip': sendData = zlib.gunzipSync(Buffer.concat(streamData));
-                    case 'compress': // LZW compression not supported yet
-                    case 'deflate': sendData = zlib.inflateSync(Buffer.concat(streamData));
-                    case 'br': sendData = zlib.brotliDecompressSync(Buffer.concat(streamData));
+                    case 'gzip': 
+                        sendData = zlib.gunzipSync(Buffer.concat(streamData));
+
+                        break;
+                    case 'compress': 
+                        // LZW compression not supported yet
+                        
+                        break;
+                    case 'deflate': 
+                        sendData = zlib.inflateSync(Buffer.concat(streamData));
+
+                        break;
+                    case 'br': 
+                        sendData = zlib.brotliDecompressSync(Buffer.concat(streamData));
+
+                        break;
                     default: sendData = Buffer.concat(streamData);
                 };
             })
@@ -42,9 +54,16 @@ module.exports = class {
             Object.entries(clientResp.headers).forEach((key, val) => key.startsWith`cf-`||key.startsWith`x-`||key=='content-security-policy'||key=='strict-transport-security'||key=='content-encoding'||key=='content-length'?delete self.key[val]:clientResp.headers[key]=rewrites.header(val));
 
             switch(clientResp.headers) {
-            case 'text/html': sendData = rewrites.html(sendData);
-            case 'text/css': sendData = rewrites.css(sendData);
-            case 'text/css'||'application/javascript'||'application/x-javascript': sendData = rewrites.js(sendData);
+            case 'text/html': 
+                sendData = rewrites.html(sendData);
+
+                break;
+            case 'text/css': 
+                sendData = rewrites.css(sendData);
+
+                break;
+            case 'text/css'||'application/javascript'||'application/x-javascript': 
+                sendData = rewrites.js(sendData);
             }
 
             resp.writeHead(clientResp.statusCode, clientResp.headers);
