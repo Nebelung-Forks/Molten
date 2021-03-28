@@ -116,7 +116,7 @@ window.Navigator.prototype.sendBeacon = new Proxy(window.Navigator.prototype.sen
 
         return Reflect.apply(target, thisArg, args);
     }
-}); 
+});
 
 window.open = new Proxy(window.open, {
     apply: (target, thisArg, args) => {
