@@ -1,4 +1,4 @@
-// TODO: Support client side
+// TODO: Make this into a module
 
 var fs = require`fs`,
     jsdom = require`jsdom`;
@@ -7,6 +7,7 @@ function header(key, val) {
     switch(key) {
     // Request headers
     // Response headers
+    case 'location': url(val);
     }
 
     return val;
@@ -35,8 +36,7 @@ function html(data) {
             case 'srcset': node.getAttribute(attr).split`, `.map((val,i)=>i%2&&url(val)).filter(a=>a).join`, `;
             case 'srcdoc': node.setAttribute(html(node.getAttribute(attr)));
             case 'style': node.setAttribute(css(node.getAttribute(attr)));
-            // JS support currently is nonexistant
-            // case 'on-*': node.setAttribute(js(node.getAttribute(attr)));
+            case 'on-*': node.setAttribute(js(node.getAttribute(attr)));
             }
         });
     });
@@ -46,8 +46,10 @@ function html(data) {
 function css(data) {
     return data.replace(/(?<=url\((?<a>["']?)).*?(?=\k<a>\))/gi, url);
 }
+function js(data) {
+    return `{${data}}`
+}
 
-/*
 window.Navigator.prototype.sendBeacon = new Proxy(window.Navigator.prototype.sendBeacon, {
     apply: (target, thisArg, args) => {
         args[0] = url(args[0]);
@@ -74,12 +76,11 @@ window.open = new Proxy(window.open, {
 
 window.XMLHttpRequest.prototype.open = new Proxy(window.XMLHttpRequest.prototype.open, {
     apply: (target, thisArg, args) => {
-	    args[1] = url(args[1]);
+        args[1] = url(args[1]);
 
-	    return Reflect.apply(target, thisArg, args);
+        return Reflect.apply(target, thisArg, args);
     }
 });
-*/
 
 // Delete non-proxified objects so requests don't escape the proxy
 
