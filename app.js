@@ -4,7 +4,7 @@ var https = require`https`,
     URL = require`url`,
     JSDOM = require`jsdom`.JSDOM,
     fs = require`fs`,
-    rewrites = require`./rewrites`; // Duce will get mad so I won't even bother doing that lol
+    rewrites = require`./rewrites`;
 
 module.exports = class {
     constructor(data={}){

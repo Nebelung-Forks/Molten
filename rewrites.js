@@ -47,7 +47,7 @@ function html(data) {
 
         node.getAttributeNames().forEach(attr => {
             switch (attr) {
-            case'nonce'||'integrity':node.removeAttribute(attr);
+            case'nonce'||'integrity': node.removeAttribute(attr);
             case'href'||'xlink:href'||'src'||'action'||'content'||'data'||'poster': node.setAttribute(self.url(node.getAttribute(attr)));
             case'srcset': node.getAttribute(attr).split`, `.map((val,i) => i%2&&url(val)).filter(a => a).join`, `;
             case'srcdoc': node.setAttribute(html(node.getAttribute(attr)));
