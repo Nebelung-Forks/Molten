@@ -4,6 +4,7 @@ const https = require('https'),
     zlib = require('zlib'),
     fs = require('fs'),
     rewrites = require('./rewrites');
+const { url } = require('inspector');
 
 // TODO: Combine everything into one module.exports
 
@@ -25,9 +26,11 @@ module.exports = class {
             res.end`${resp.statusCode=400}, ${err}`;
         }
 
-        // Assume protocol for now
-        // I know the code doesn't work don't try to fix it
-        const sendReq = https.request(url.href, {headers: Object.entries(Object.assign({}, req.headers)).forEach((key, val) => key[val] = rewrites.header(key, key[val])), method: req.method}, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
+        if (url.protocol == 'https') reqProtocol = https
+        else if (url.protocol == 'http') reqProtocol = http
+        else res.end`${resp.statusCode=400}, The requested url protocol is invalid`;
+    
+        const sendReq = (reqProtocol).request(url.href, {headers: Object.entries(Object.assign({}, req.headers)).forEach((key, val) => key[val] = rewrites.header(key, key[val])), method: req.method}, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
             const enc = clientResp.headers`content-encoding`;
             if (typeof enc != 'undefined') enc.split`, `.forEach(encType => {
                 if (encType == 'gzip') zlib.gunzipSync(Buffer.concat(streamData));
@@ -36,7 +39,6 @@ module.exports = class {
                 else sendData = Buffer.concat(streamData);
             })
 
-            // I know the code doesn't work don't try to fix it
             Object.entries(clientResp.headers).forEach((key, val) => (`content-length`.includes(clientResp.headers) ? null : resp.setHeader(key, rewrites.header(val))));
 
             const type = clientResp.headers`content-type`;

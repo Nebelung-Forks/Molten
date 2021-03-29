@@ -1,43 +1,38 @@
 const nodejs = typeof exports !== 'undefined' && this.exports !== exports ? module.exports : window.rewrites = {
-    cookie: { // See if I can minimise duplicated code for the cookie object
-        construct: (data) => {
-            data.split`; `.forEach(exp => {
-                split = exp.split`=`;
-        
-                if (split.length == 2) {
-                    if (split[0] == 'domain') baseUrl.hostname;
-                    if (split[0] == 'path') baseUrl.path;
-                }
+    url: data => {
+        data = data.split`./`.pop();
 
-                return split.join`=`;
-            });
-        },
-        deconstruct: (data) => {
-            data.split`; `.forEach(exp => {
-                split = exp.split`=`;
-        
-                if (split.length == 2) {
-                    if (split[0] == 'domain') baseUrl.hostname;
-                    if (split[0] == 'path'); deconstructURL(baseUrl.path);
-                }
-        
-                return split.join`=`;
-            });
-        }
+        if (['http', 'https'].includes(data.split`:`[0])) return data;
+        else if (data.startsWith`//`) return prefix + data.slice(0, 2);
+        else if (data.startsWith`/`) return prefix + url.origin + data.slice(1);
+        else return prefix + url.href.slice(url.href.split`/`.pop().split`.`.length + 1) + data;
     },
     header: (key, val) => {
         if (key == 'cookie') return this.cookie.deconstruct(val);
-        if (key == 'host') return url.href;
+        else if (key == 'host') return url.href;
+        else if (key == 'referrer') return deconstructURL(val);
         else if (key == 'location') return this.url(val);
         else if (key == 'set-cookie') return this.cookie.construct(val);
         else return val;
     },
-    url: url => {
-        if (['http', 'https'].includes(url.split`:`[0])) return url;
+    cookie: {
+        construct: data => data.split`; `.forEach(exp => {
+            split = exp.split`=`;
         
-        return url;
+            if (split.length == 2) {
+                if (split[0] == 'domain') baseUrl.hostname;
+                if (split[0] == 'path') baseUrl.path;
+            }
+        }).join`=`,
+        deconstruct: (data) => val.split`; `.forEach(exp => {
+            data = exp.split`=`;
+        
+            if (split.length == 2) {
+                if (split[0] == 'domain') url.hostname;
+                if (split[0] == 'path'); deconstructURL(data);
+            }
+        }).join`=`
     },
-    // manifest:
     html: body => {
         if (nodejs) const jsdom = require('jsdom').JSDOM, fs = require('fs'), dom = new JSDOM(body, {contentType: 'text/html'});
         else dom = new DOMParser.parseFromString(body, 'text/html');
@@ -61,7 +56,7 @@ const nodejs = typeof exports !== 'undefined' && this.exports !== exports ? modu
     js: body => `{let document=proxifiedDocument;${body.replace(/proxifiedDocument/g, 'document')}`
 };
 
-if (nodejs) const {baseUrl, url, deconstructURL, constructURL} = require('./app');
+if (nodejs) const {baseUrl, url, prefix, deconstructURL, constructURL} = require('./app');
 else {
     proxifiedDocument = new Proxy(document, {
         get: (target, prop) => (prop == 'cookie' ? rewrites.cookie.deconstruct(target) : typeof(prop = Reflect.get(target, prop)) == 'function' ? prop.bind(target) : prop),
