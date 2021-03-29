@@ -7,8 +7,8 @@ const https = require('https'),
 
 module.exports = class {
     constructor(data = {}) {
-        this.prefix = '/get/';
-        this.deconstructURL = url => req.url.path.slice(this.prefix);
+        this.prefix = data.prefix;
+        this.deconstructURL = url => url.slice(this.prefix.length);
         this.constructURL = url => this.prefix + url;
         Object.assign(globalThis, this);
     };
@@ -21,21 +21,21 @@ module.exports = class {
         if (url == "inject") {
             resp.statusCode = 200;
 
-            resp.end`/*Pass constructor data here*/\n${fs.readFileSync('./rewrites.js', 'utf-8')}`;
+            resp.end(`/*Pass constructor data here*/\n${fs.readFileSync('./rewrites.js', 'utf-8')}`);
         }
 
-        try {
-            new URL(url);
-        } catch (err) {
-            return resp.end`${resp.statusCode = 400}, ${err}`;
+        var reqHeaders = {};
+
+        for (var name in req.headers) {
+            reqHeaders[name] = rewrites.header(name, req.headers[name]);
         }
 
         const reqOptions = {
-            headers: Object.assign({}, req.headers.forEach((key, val) => val = rewrites.header(key, val))),
+            headers: reqHeaders,
             method: req.method
         };
 
-        const sendReq = (url.scheme).request(url, reqOptions, (clientResp, rawData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
+        const sendReq = (req.protocol).request(url, reqOptions, (clientResp, rawData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
             clientResp.headers['content-encoding'].split`, `.forEach(enc => {
                 switch (enc) {
                     case 'gzip': sendData = zlib.gunzipSync(Buffer.concat(streamData)); break;

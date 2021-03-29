@@ -6,7 +6,7 @@ if (server) {
 
 var rewrites = server ? module.exports : (window.rewrites = {});
 
-rewrites = {
+module.exports = {
     cookie: {
         construct: (data) => {
             data.split`; `.forEach(exp => {
@@ -36,7 +36,7 @@ rewrites = {
             case 'set-cookie': this.cookie.construct(val);
         }
 
-        return val
+        return val;
     },
     url: url => {
         for (proto of ['http', 'https']) {
