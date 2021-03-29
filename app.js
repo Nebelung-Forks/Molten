@@ -1,7 +1,6 @@
 const https = require('https'),
     http = require('http'),
     zlib = require('zlib'),
-    URL = require('url'),
     fs = require('fs'),
     rewrites = require('./rewrites');
 
@@ -16,26 +15,17 @@ module.exports = class {
     // TODO: Add websocket server
 
     http(req, resp) {
-        const url = deconstructURL(req.url);
-
-        if (url == "inject") {
-            resp.statusCode = 200;
-
-            resp.end(`/*Pass constructor data here*/\n${fs.readFileSync('./rewrites.js', 'utf-8')}`);
-        }
-
-        var reqHeaders = {};
-
-        for (var name in req.headers) {
-            reqHeaders[name] = rewrites.header(name, req.headers[name]);
-        }
+        const url = new URL(deconstructURL(req.url));
 
         const reqOptions = {
-            headers: reqHeaders,
+            headers: Object.entries(Object.assign({}, req.headers)).forEach((key, val) => key[val] = rewrites.header(key, key[val])),
             method: req.method
         };
 
-        const sendReq = (req.protocol).request(url, reqOptions, (clientResp, rawData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
+        console.log(reqOptions.headers)
+
+        // Assume protocol for now
+        const sendReq = http.request(url, reqOptions, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
             clientResp.headers['content-encoding'].split`, `.forEach(enc => {
                 switch (enc) {
                     case 'gzip': sendData = zlib.gunzipSync(Buffer.concat(streamData)); break;
@@ -51,8 +41,9 @@ module.exports = class {
             switch(clientResp.headers['content-type']) {
             case 'text/html': sendData = rewrites.html(sendData); break;
             case 'text/css': sendData = rewrites.css(sendData); break;
-            case 'text/css' || 'application/javascript' || 'application/x-javascript': sendData = rewrites.js(sendData);
-            // case 'application/json':
+            case 'text/javascript': sendData = rewrites.js(sendData); break;
+            case 'application/x-javascript': sendData = rewrites.js(sendData); break;
+            case 'application/javascript': sendData = rewrites.js(sendData);
             }
 
             resp.writeHead(clientResp.statusCode, clientResp.headers);
@@ -62,6 +53,6 @@ module.exports = class {
 
         sendReq.on('error', err => res.end(err));
 
-        req.on('data', data => sendReq.write(data)).on('end', sendReq.end());
+        req.on('data', data => sendReq.write(data)).on('end', () => (sendReq.end()));
     }
 }
