@@ -1,6 +1,6 @@
 const nodejs = typeof exports !== 'undefined' && this.exports !== exports
 
-const url = nodejs ? require('url') : undefined;
+const url = nodejs ? require('url') : null;
 
 module.exports = class {
     constructor(data = {}) {
@@ -49,12 +49,11 @@ module.exports = class {
     html(val) {
         const jsdom = nodejs ? require('jsdom').JSDOM : null, fs = nodejs ? require('fs') : null, dom = nodejs ? new jsdom(val, {contentType: 'text/html'}) : new DOMParser.parseFromString(val, 'text/html');
 
-        return dom.window.document.querySelectorAll('*').forEach(node => {
+        dom.window.document.querySelectorAll('*').forEach(node => {
             if (node.tagname == 'SCRIPT') this.js(node.textContent);
             if (node.tagname == 'STYLE') this.css(node.textContent);
 
             node.getAttributeNames().forEach(attr => {
-                console.log(attr)
                 if (['action', 'content', 'data', 'href', 'poster', 'xlink:href'].includes(attr)) node.setAttribute(attr,this.url(node.getAttribute(attr)));
                 if (['integrity', 'nonce'].includes(attr)) node.removeAttribute(attr);
                 if (attr == 'style') node.setAttribute(attr, this.css(node.getAttribute(attr))); 
@@ -64,7 +63,10 @@ module.exports = class {
             })
 
             //if (nodejs) node.getElementsByTagName('head')[0].appendChild(document.createElement('SCRIPT').innerHTML(fs.readFileSync('rewriter.js').split('\n').shift().join('\n')));
-        }).innerHTML;
+            // I did a lot of logging everything looks fine inside of the for each loops but it returns nothing
+        });
+
+        return nodejs ? dom.serialize() : dom.querySelector('*').outerHTML;
     }
     css(val) {
         return val.replace(/(?<=url\((?<a>["']?)).*?(?=\k<a>\))|(?<=@import *(?<b>"|')).*?(?=\k<b>.*?;)/g, this.pUrl);

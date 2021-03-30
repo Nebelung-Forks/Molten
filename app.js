@@ -5,8 +5,8 @@ const https = require('https'),
     Rewriter = require('./rewriter');
 
 module.exports = class {
-    constructor(data = {}) {
-        this.prefix = data.prefix, 
+    constructor(data = {}) { // duce can you help with something else
+        this.prefix = data.prefix,
         this.deconstructUrl = url => url.slice(this.prefix.length), 
         this.constructUrl = url => this.prefix + url;
         Object.assign(globalThis, this);
@@ -16,9 +16,10 @@ module.exports = class {
 
     http(req, resp) {
         try {
-            this.pUrl = new URL(deconstructUrl(req.url)), this.bUrl = new URL(req.protocol + '://' + req.host + this.prefix + this.pUrl.href)
+            this.pUrl = new URL(deconstructUrl(req.url)),
+            this.bUrl = new URL(req.protocol + '://' + req.host + this.prefix + this.pUrl.href)
         } catch (err) {
-            return resp.writeHead(400, err).end();
+            return resp.writeHead(400, err).end(); // Also the error on the client side is blank
         }
 
         const rewriter = new Rewriter({prefix: this.prefix, bUrl: this.bUrl, pUrl: this.pUrl});
@@ -37,21 +38,22 @@ module.exports = class {
                 else sendData = Buffer.concat(streamData).toString();
             })
 
-            Object.entries(clientResp.headers).forEach((key, val) => (['access-control-allow-origin', 'content-length'].includes(clientResp.headers) ? null : resp.setHeader[key, rewriter.header(key, val)]));
+            Object.entries(clientResp.headers).forEach((key, val) => (['access-control-allow-origin', 'content-length', 'content-encoding'].includes(clientResp.headers) ? null : resp.setHeader[key, rewriter.header(key, val)]));
 
-            resp.setHeader('access-control-allow-origin', this.bUrl.host);
+            resp.setHeader['access-control-allow-origin', this.bUrl.host];
 
             const type = clientResp.headers['content-type'].split('; ')[0];
             if (type == 'text/html') sendData = rewriter.html(sendData);
             if (type == 'text/css') sendData = rewriter.css(sendData);
             if (['text/javascript', 'application/x-javascript', 'application/javascript'].includes(type)) sendData = rewriter.css(sendData);
 
-            resp.writeHead(clientResp.statusCode, clientResp.headers);
+            console.log(resp.getHeaders());
+            resp.statusCode = 200;
 
             resp.end(sendData);
         }));
 
-        sendReq.on('error', err => res.end(err));
+        sendReq.on('error', err => resp.writeHead(400, err).end());
 
         req.on('data', data => sendReq.write(data)).on('end', () => (sendReq.end()));
     }
