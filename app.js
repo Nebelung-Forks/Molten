@@ -1,56 +1,47 @@
-const https = require('https'),
-    http = require('http'),
-    zlib = require('zlib'),
-    rewrites = require('./rewrites');
+const https = require('https'), 
+    http = require('http'), 
+    zlib = require('zlib'), 
+    url = require('url'), 
+    Rewriter = require('./rewriter');
 
 module.exports = class {
     constructor(data = {}) {
-        this.prefix = data.prefix,
-        this.deconstructUrl = url => url.slice(this.prefix.length),
-        this.constructUrl = url => this.prefix + url,
-        Object.assign(globalThis, this); // I needed a little help with 27 and 36
+        this.prefix = data.prefix, 
+        this.deconstructUrl = url => url.slice(this.prefix.length), 
+        this.constructUrl = url => this.prefix + url;
+        Object.assign(globalThis, this);
     };
 
     // TODO: Add websocket server
-    // oh and can you add your websocket server here once you are done
 
-    static headers = {
-        req(headers, url, parse, rewrite){
-
-        },
-        res(headers, url, parse, rewrite){},
-        websocket(headers, url, parse, rewrite){},
-    }
- // what is parse and rewrite?
     http(req, resp) {
         try {
-            pUrl = new URL(deconstructUrl(req.url));
-            reqUrl = new URL(`${req.protocol}://${req.host}${this.prefix}${pUrl.href}`);
+            this.pUrl = new URL(deconstructUrl(req.url)), this.bUrl = new URL(req.protocol + '://' + req.host + this.prefix + this.pUrl.href)
         } catch (err) {
-            res.end`${resp.statusCode = 400}, ${err}`;
+            return resp.writeHead(400, err).end();
         }
 
-        //if (!/(http|https)/.test(req.protocol)) return res.end`${resp.statusCode = 400}, ${url.protocol} is an invalid protocol`;
+        const rewriter = new Rewriter({prefix: this.prefix, bUrl: this.bUrl, pUrl: this.pUrl});
 
-        if (url.protocol == 'https') reqProtocol = https;
-        else if (url.protocol == 'http') reqProtocol = http;
-        else res.end`${resp.statusCode = 400}, ${url.protocol} is an invalid protocol`;
+        if (this.pUrl.protocol == 'https:') this.reqProtocol = https;
+        else if (this.pUrl.protocol == 'http:') this.reqProtocol = http;
+        else return resp.writeHead(400, 'invalid protocol').end();
 
-        const sendReq = reqProtocol.request(pUrl.href, {headers: Object.entries(Object.assign({}, req.headers)).forEach((key, val) => key[val] = rewrites.header(key, key[val])), method: req.method}, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
-            const enc = clientResp.headers`content-encoding`.split`; `[0]; // duce what are you doing here?
-            if (typeof enc != 'undefined') enc.split`, `.forEach(encType => {
-                if (encType == 'gzip') zlib.gunzipSync(Buffer.concat(streamData));
-                else if (encType == 'deflate') sendData = zlib.inflateSync(Buffer.concat(streamData));
-                else if (encType == 'br') sendData = zlib.brotliDecompressSync(Buffer.concat(streamData));
-                else sendData = Buffer.concat(streamData);
+        const sendReq = this.reqProtocol.request(this.pUrl.href, {headers: Object.fromEntries(Object.entries(Object.assign({}, req.headers)).map(([key, val]) => [key, rewriter.header(key, val)])), method: req.method, followAllRedirects: false}, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
+            const enc = clientResp.headers['content-encoding'].split('; ')[0];
+            console.log(enc)
+            if (typeof enc != 'undefined') enc.split(', ').forEach(encType => {
+                if (encType == 'gzip') sendData = zlib.gunzipSync(Buffer.concat(streamData)).toString();
+                else if (encType == 'deflate') sendData = zlib.inflateSync(Buffer.concat(streamData)).toString();
+                else if (encType == 'br') sendData = zlib.brotliDecompressSync(Buffer.concat(streamData)).toString();
+                else sendData = Buffer.concat(streamData).toString();
             })
 
-            // Also is undefined here too
-            Object.entries(clientResp.headers).forEach((key, val) => (`content-length`.includes(clientResp.headers) ? null : resp.setHeader(key, rewrites.header(val)))); 
+            Object.entries(clientResp.headers).forEach((key, val) => (['access-control-allow-origin', 'content-length'].includes(clientResp.headers) ? null : resp.setHeader[key, rewriter.header(key, val)]));
 
-            rewriter = new Rewriter({prefix: this.prefix, baseUrl: baseUrl, url: url}); 
+            resp.setHeader('access-control-allow-origin', this.bUrl.host);
 
-            const type = clientResp.headers`content-type`.split`; `[0];
+            const type = clientResp.headers['content-type'].split('; ')[0];
             if (type == 'text/html') sendData = rewriter.html(sendData);
             if (type == 'text/css') sendData = rewriter.css(sendData);
             if (['text/javascript', 'application/x-javascript', 'application/javascript'].includes(type)) sendData = rewriter.css(sendData);
