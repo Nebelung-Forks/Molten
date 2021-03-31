@@ -40,8 +40,9 @@ module.exports = class {
     header(key, val) {
         if (key == 'cookie') return this.cookie.deconstruct(val);
         else if (key == 'host') return this.pUrl.hostname;
-        else if (key == 'referrer') return deconstructURL(val);
         else if (key == 'location') return this.url(val);
+        else if (key == 'origin') return this.url(val)
+        else if (key == 'referrer') return deconstructURL(val);
         else if (key == 'set-cookie') return this.cookie.construct(val);
         else return val;
     }
@@ -62,8 +63,7 @@ module.exports = class {
                 if (attr == 'srcset') node.getAttribute(attr).split(', ').map((val, i) => i % 2 && this.url(val)).filter(a => a).join(', ');
             })
 
-            //if (nodejs) node.getElementsByTagName('head')[0].appendChild(document.createElement('SCRIPT').innerHTML(fs.readFileSync('rewriter.js').split('\n').shift().join('\n')));
-            // I did a lot of logging everything looks fine inside of the for each loops but it returns nothing
+            if (nodejs) node.getElementsByTagName('head')[0].appendChild(document.createElement('SCRIPT').innerHTML(fs.readFileSync('rewriter.js').split('\n').shift().join('\n')));
         });
 
         return nodejs ? dom.serialize() : dom.querySelector('*').outerHTML;

@@ -5,7 +5,7 @@ const https = require('https'),
     Rewriter = require('./rewriter');
 
 module.exports = class {
-    constructor(data = {}) { // duce can you help with something else
+    constructor(data = {}) {
         this.prefix = data.prefix,
         this.deconstructUrl = url => url.slice(this.prefix.length), 
         this.constructUrl = url => this.prefix + url;
@@ -19,7 +19,7 @@ module.exports = class {
             this.pUrl = new URL(deconstructUrl(req.url)),
             this.bUrl = new URL(req.protocol + '://' + req.host + this.prefix + this.pUrl.href)
         } catch (err) {
-            return resp.writeHead(400, err).end(); // Also the error on the client side is blank
+            return resp.writeHead(400, err).end();
         }
 
         const rewriter = new Rewriter({prefix: this.prefix, bUrl: this.bUrl, pUrl: this.pUrl});
@@ -29,7 +29,7 @@ module.exports = class {
         else return resp.writeHead(400, 'invalid protocol').end();
 
         const sendReq = this.reqProtocol.request(this.pUrl.href, {headers: Object.fromEntries(Object.entries(Object.assign({}, req.headers)).map(([key, val]) => [key, rewriter.header(key, val)])), method: req.method, followAllRedirects: false}, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
-            const enc = clientResp.headers['content-encoding'].split('; ')[0];
+            const enc = clientResp.headers['content-encoding'].split('; ')[0];  
             console.log(enc)
             if (typeof enc != 'undefined') enc.split(', ').forEach(encType => {
                 if (encType == 'gzip') sendData = zlib.gunzipSync(Buffer.concat(streamData)).toString();
@@ -40,14 +40,13 @@ module.exports = class {
 
             Object.entries(clientResp.headers).forEach((key, val) => (['access-control-allow-origin', 'content-length', 'content-encoding'].includes(clientResp.headers) ? null : resp.setHeader[key, rewriter.header(key, val)]));
 
-            resp.setHeader['access-control-allow-origin', this.bUrl.host];
+            resp.setHeader['content-security-policy', this.bUrl.host];
 
             const type = clientResp.headers['content-type'].split('; ')[0];
             if (type == 'text/html') sendData = rewriter.html(sendData);
             if (type == 'text/css') sendData = rewriter.css(sendData);
             if (['text/javascript', 'application/x-javascript', 'application/javascript'].includes(type)) sendData = rewriter.css(sendData);
 
-            console.log(resp.getHeaders());
             resp.statusCode = 200;
 
             resp.end(sendData);
