@@ -1,5 +1,5 @@
 const http = require('http'),
-    Molten = require('./app.js'),
-    proxy = new Molten({prefix: '/'});
+    Molten = require('./app'),
+    proxy = new Molten({httpPrefix: '/', wsPrefix: '/ws/'});
 
-http.createServer((req, res) => proxy.http(req, res)).listen(80);
+proxy.ws(http.createServer((req, res) => proxy.http(req, res)).listen(80));

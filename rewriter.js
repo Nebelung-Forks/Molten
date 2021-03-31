@@ -4,51 +4,64 @@ const url = nodejs ? require('url') : null;
 
 module.exports = class {
     constructor(data = {}) {
-        console.log(data)
-        this.prefix = nodejs ? data.prefix : location.pathname.split('/')[0], this.pUrl = nodejs ? data.pUrl : this.deconstructURL(location.path), this.bUrl = nodejs ? data.bUrl : location.href, this.deconstructUrl = url => url.slice(this.prefix.length), this.constructUrl = url => this.prefix + url;
+        this.prefix = nodejs ? data.prefix : location.pathname.split('/')[0], 
+        this.pUrl = nodejs ? data.pUrl : this.deconstructURL(location.path), 
+        this.bUrl = nodejs ? data.bUrl : location.href, 
+        this.contentLength = data.contentLength,
         Object.assign(globalThis, this);
     };
 
-    static cookie = {
-        construct: expList => expList.split(';').forEach(exp => {
+    static deconstructUrl(url) {
+        return url.slice(url.startsWith(this.prefix) ? this.prefix.length : this.bUrl.href);
+    }
+
+    static constructUrl(url) {
+        return url.startsWith(this.prefix) ? this.prefix : this.bUrl.href + url;
+    }
+
+    static url(val) {
+        val = val.split('./').pop();
+
+        if (['http', 'https', 'ws', 'wss'].includes(val.split(':')[0])) return val;
+        else if (val.startsWith('//')) return prefix + val.slice(0, 2);
+        else if (val.startsWith('/')) return prefix + this.pUrl.origin + val.slice(1);
+        else return prefix + this.pUrl.href.slice(this.pUrl.href.split('/').pop().split('.').length + 1) + val;
+    }
+
+    static cookie(expList) {
+        expList.split(';').forEach(exp => {
             const split = exp.split('=');
         
             if (split.length == 2) {
                 if (split[0] == 'domain') this.bUrl.hostname;
                 if (split[0] == 'path') this.bUrl.path;
             }
-        }).join('='),
-        deconstruct: expList => expList.split('; ').forEach(exp => {
-            const split = exp.split('=');
-        
-            if (split.length == 2) {
-                if (split[0] == 'domain') this.pUrl.hostname;
-                if (split[0] == 'path'); deconstructURL(split[0]);
-            }
-        }).join('=')
-    }
-
-    url(val) {
-        val = val.split('./').pop();
-
-        if (['http', 'https'].includes(val.split(':')[0])) return val;
-        else if (val.startsWith('//')) return prefix + val.slice(0, 2);
-        else if (val.startsWith('/')) return prefix + this.pUrl.origin + val.slice(1);
-        else return prefix + this.pUrl.href.slice(this.pUrl.href.split('/').pop().split('.').length + 1) + val;
+        }).join('=');
     }
 
     header(key, val) {
-        if (key == 'cookie') return this.cookie.deconstruct(val);
-        else if (key == 'host') return this.pUrl.hostname;
+        // General information https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers
+        // TODO: Add websocket headers
+        if (key == 'access-control-allow-origin' && !['*', 'null'].includes[val]) return this.url(val);
+        if (key == 'content-length') return this.contentLength;
+        if (['cookie', 'cookie2'].includes(key)) return this.cookie.deconstruct(val);
+         // Not done yet https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Forwarded
+        //if (key == 'forwarded') return val.split(';');
+        else if (key == 'host') return this.pUrl.host;
         else if (key == 'location') return this.url(val);
-        else if (key == 'origin') return this.url(val)
+        else if (key == 'origin' && val != 'null') return this.pUrl.origin;
         else if (key == 'referrer') return deconstructURL(val);
-        else if (key == 'set-cookie') return this.cookie.construct(val);
+        else if (['set-cookie', 'set-cookie2'].includes(key)) return this.cookie.construct(val);
+        else if (key == 'timing-allow-origin' && val != '*') return this.url(val);
+        else if (['x-backend-server', 'x-forwarded-host'].includes(key)) return this.bUrl.host;
         else return val;
     }
 
     html(val) {
-        const jsdom = nodejs ? require('jsdom').JSDOM : null, fs = nodejs ? require('fs') : null, dom = nodejs ? new jsdom(val, {contentType: 'text/html'}) : new DOMParser.parseFromString(val, 'text/html');
+        const DOMParser = nodejs ? require('jsdom').JSDOM : null, 
+            fs = nodejs ? require('fs') : null, 
+            {minify} = nodejs ? require("terser") : null, 
+            dom = new DOMParser.parseFromString(val, 'text/html');
 
         dom.window.document.querySelectorAll('*').forEach(node => {
             if (node.tagname == 'SCRIPT') this.js(node.textContent);
@@ -63,10 +76,10 @@ module.exports = class {
                 if (attr == 'srcset') node.getAttribute(attr).split(', ').map((val, i) => i % 2 && this.url(val)).filter(a => a).join(', ');
             })
 
-            if (nodejs) node.getElementsByTagName('head')[0].appendChild(document.createElement('SCRIPT').innerHTML(fs.readFileSync('rewriter.js').split('\n').shift().join('\n')));
+            nodejs ? node.getElementsByTagName('head')[0].appendChild(document.createElement('SCRIPT').innerHTML(await minify(fs.readFileSync('rewriter.js')))) : null;
         });
 
-        return nodejs ? dom.serialize() : dom.querySelector('*').outerHTML;
+        return dom.querySelector('*').outerHTML;
     }
     css(val) {
         return val.replace(/(?<=url\((?<a>["']?)).*?(?=\k<a>\))|(?<=@import *(?<b>"|')).*?(?=\k<b>.*?;)/g, this.pUrl);
@@ -80,7 +93,9 @@ if (!nodejs) {
     rewriter = new Rewriter();
 
     proxifiedDocument = new Proxy(document, {
-        get: (target, prop) => (prop == 'cookie' ? rewriter.cookie.deconstruct(target) : typeof(prop = Reflect.get(target, prop)) == 'function' ? prop.bind(target) : prop),
+        get: (target, prop) => {
+            prop == 'cookie' ? rewriter.cookie.deconstruct(target) : typeof(prop = Reflect.get(target, prop)) == 'function' ? prop.bind(target) : prop;
+        },
         set: (target, prop) => {
             if (['location', 'referrer', 'URL'].includes(prop)) return rewriter.url(target);
             else if (prop == 'cookie') return rewriter.cookie.construct(target);
@@ -89,9 +104,9 @@ if (!nodejs) {
     });
 
     document.write = new Proxy(document.write, {
-        apply(target, thisArg, args) {
-            args[0] = rewriter.html(args[0]);
-    
+    apply(target, thisArg, args) {
+        args[0] = rewriter.html(args[0]);
+
             return Reflect.apply(target, thisArg, args);
         }
     });
@@ -99,74 +114,72 @@ if (!nodejs) {
     window.fetch = new Proxy(window.fetch, {
         apply(target,thisArg,args) {
             args[0] = rewriter.url(args[0]);
-    
+
             return Reflect.apply(target, thisArg, args);
         }
     });
-    
+
     const historyHandler = {
         apply(target, thisArg, args) {
             args[2] = rewriter.url(args[2]);
-    
+
             return Reflect.apply(target, thisArg, args);
         }
     };
-    
+
     window.History.prototype.pushState = new Proxy(window.History.prototype.pushState, historyHandler);
     window.History.prototype.replaceState = new Proxy(window.History.prototype.replaceState, historyHandler);
-    
+
     window.Navigator.prototype.sendBeacon = new Proxy(window.Navigator.prototype.sendBeacon, {
         apply(target, thisArg, args) {
             args[0] = rewriter.url(args[0]);
-    
+
             return Reflect.apply(target, thisArg, args);
         }
     }); 
-    
+
     window.open = new Proxy(window.open, {
         apply(target, thisArg, args) {
             args[0] = rewriter.url(args[0]);
-    
+
             return Reflect.apply(target, thisArg, args);
         }
     });
-    
+
     window.postMessage = new Proxy(window.postMessage, {
         apply(target, thisArg, args) {
             args[1] = location.origin;
-    
-            return Reflect.apply(target, thisArg, args)
-        }
-    });
-    
-    window.WebSocket = new Proxy(window.WebSocket, {
-        construct(target, args) {
-            // Websocket connections are currently unsupported
-        }
-    });
-    
-    window.Worker = new Proxy(window.Worker, {
-        construct(target, args) {
-            args[0] = rewriter.url(args[0]);
-    
-            return Reflect.construct(target, args);
-        }
-    });
-     
-    window.XMLHttpRequest.prototype.open = new Proxy(window.XMLHttpRequest.prototype.open, {
-        apply(target, thisArg, args) {
-            args[1] = rewriter.url(args[1]);
-    
+
             return Reflect.apply(target, thisArg, args);
         }
     });
+
+    window.WebSocket = new Proxy(window.WebSocket, {
+        construct(target, args) {
+            args[0] = rewrites.url(args[0]);
+            
+            return Reflect.construct(target, args);
+        }
+    });
+
+    window.Worker = new Proxy(window.Worker, {
+        construct(target, args) {
+            args[0] = rewriter.url(args[0]);
+
+            return Reflect.construct(target, args);
+        }
+    });
     
-    // Delete the current script tag to prevent dom interferance with future javascript code
+    window.XMLHttpRequest.prototype.open = new Proxy(window.XMLHttpRequest.prototype.open, {
+        apply(target, thisArg, args) {
+            args[1] = rewriter.url(args[1]);
+
+            return Reflect.apply(target, thisArg, args);
+        }
+    });
+
     document.currentScript.remove();
-    
-    // WebSocket
-    delete window.WebSocket;
-    
+
     // WebRTC
     delete window.MediaStreamTrack; 
     delete window.RTCPeerConnection;

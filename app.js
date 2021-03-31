@@ -1,36 +1,40 @@
 const https = require('https'), 
-    http = require('http'), 
+    http = require('http'),
+    WebSocket = require('ws'),
     zlib = require('zlib'), 
     url = require('url'), 
     Rewriter = require('./rewriter');
 
 module.exports = class {
     constructor(data = {}) {
-        this.prefix = data.prefix,
-        this.deconstructUrl = url => url.slice(this.prefix.length), 
-        this.constructUrl = url => this.prefix + url;
+        this.httpPrefix = data.wsPrefix;
+        this.wsPrefix = data.wsPrefix;
         Object.assign(globalThis, this);
     };
 
-    // TODO: Add websocket server
+    static constructUrl(url) {
+        const caller = this.deconstructUrl.caller.name;
+        if (caller == 'http') return this.httpPrefix + url;
+        if (caller == 'ws') return this.wsPrefix + url;
+    }
+
+    static deconstructUrl(url) {
+        const caller = this.deconstructUrl.caller.name;
+        if (caller == 'http') return url.slice(this.httpPrefix.length);
+        if (caller == 'ws') return url.slice(this.wsPrefix.length);
+    }
 
     http(req, resp) {
-        try {
-            this.pUrl = new URL(deconstructUrl(req.url)),
-            this.bUrl = new URL(req.protocol + '://' + req.host + this.prefix + this.pUrl.href)
-        } catch (err) {
-            return resp.writeHead(400, err).end();
-        }
-
-        const rewriter = new Rewriter({prefix: this.prefix, bUrl: this.bUrl, pUrl: this.pUrl});
+        this.pUrl = new URL(httpDeconstructUrl(req.url));
+        this.bUrl = new URL(req.protocol + '://' + req.host + this.httpPrefix + this.pUrl.href);
 
         if (this.pUrl.protocol == 'https:') this.reqProtocol = https;
         else if (this.pUrl.protocol == 'http:') this.reqProtocol = http;
         else return resp.writeHead(400, 'invalid protocol').end();
 
         const sendReq = this.reqProtocol.request(this.pUrl.href, {headers: Object.fromEntries(Object.entries(Object.assign({}, req.headers)).map(([key, val]) => [key, rewriter.header(key, val)])), method: req.method, followAllRedirects: false}, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
-            const enc = clientResp.headers['content-encoding'].split('; ')[0];  
-            console.log(enc)
+            // TODO: Support transfer-encoding too
+            const enc = clientResp.headers['content-encoding'].split('; ')[0];
             if (typeof enc != 'undefined') enc.split(', ').forEach(encType => {
                 if (encType == 'gzip') sendData = zlib.gunzipSync(Buffer.concat(streamData)).toString();
                 else if (encType == 'deflate') sendData = zlib.inflateSync(Buffer.concat(streamData)).toString();
@@ -38,9 +42,10 @@ module.exports = class {
                 else sendData = Buffer.concat(streamData).toString();
             })
 
-            Object.entries(clientResp.headers).forEach((key, val) => (['access-control-allow-origin', 'content-length', 'content-encoding'].includes(clientResp.headers) ? null : resp.setHeader[key, rewriter.header(key, val)]));
+            const rewriter = new Rewriter({httpPrefix: this.httpPrefix, bUrl: this.bUrl, pUrl: this.pUrl, contentLength: Buffer.concat(streamData).length});
 
-            resp.setHeader['content-security-policy', this.bUrl.host];
+            // TODO: Be coors compliant
+            Object.entries(clientResp.headers).forEach((key, val) => resp.setHeader[key, rewriter.header(key, val)]);
 
             const type = clientResp.headers['content-type'].split('; ')[0];
             if (type == 'text/html') sendData = rewriter.html(sendData);
@@ -55,5 +60,29 @@ module.exports = class {
         sendReq.on('error', err => resp.writeHead(400, err).end());
 
         req.on('data', data => sendReq.write(data)).on('end', () => (sendReq.end()));
-    }
+    };
+
+    ws(server) {
+        new WebSocket.Server({server: server}).on('connection', (wsClient, req) => {
+            this.pUrl = new URL(wsDeconstructUrl(req.url)),
+            this.bUrl = new URL(req.protocol + '://' + req.host + this.wsPrefix + this.pUrl.href)
+
+            if (this.pUrl.protocol == 'ws:') this.reqProtocol = https;
+            else if (this.pUrl.protocol == 'ws:') this.reqProtocol = http;
+            else return wsClient.terminate();
+
+            let msgParts = [];
+
+            sendReq = new WebSocket(this.pUrl.href, {origin: this.pUrl.origin, headers: req.headers})
+                .on('message', msg => wsClient.send(msg))
+                .on('open', () => sendReq.send(msgParts.join('')))
+                .on('error', () => wsClient.terminate())
+                .on('close', () => wsClient.close());
+
+            wsClient
+                .on('message', msg => sendReq.readyState == WebSocket.open ? sendReq.send(msg) : msgParts.push(msg))
+                .on('error', () => sendReq.terminate())
+                .on('close', () => sendReq.close());
+        });
+    };
 }
