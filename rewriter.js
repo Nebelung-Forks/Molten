@@ -19,13 +19,15 @@ module.exports = class {
         return url.startsWith(this.prefix) ? this.prefix : this.bUrl.href + url;
     }
 
-    static url(val) {
-        val = val.split('./').pop();
+    static url(val, options = {}) {
+        if (options.type == 'html') {
+            val = val.split('./').pop();
 
-        if (['http', 'https', 'ws', 'wss'].includes(val.split(':')[0])) return val;
-        else if (val.startsWith('//')) return prefix + val.slice(0, 2);
-        else if (val.startsWith('/')) return prefix + this.pUrl.origin + val.slice(1);
-        else return prefix + this.pUrl.href.slice(this.pUrl.href.split('/').pop().split('.').length + 1) + val;
+            if (!['http', 'https'].includes(val.split(':')[0])) return val;
+            else if (val.startsWith('//')) return prefix + val.slice(0, 2);
+            else if (val.startsWith('/')) return prefix + this.pUrl.origin + val.slice(1);
+            else return prefix + this.pUrl.href.slice(this.pUrl.href.split('/').pop().split('.').length + 1) + val;
+        } else return constructUrl(val);
     }
 
     static cookie(expList) {
@@ -42,18 +44,13 @@ module.exports = class {
     header(key, val) {
         // General information https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers
         // TODO: Add websocket headers
-        if (key == 'access-control-allow-origin' && !['*', 'null'].includes[val]) return this.url(val);
-        if (key == 'content-length') return this.contentLength;
-        if (['cookie', 'cookie2'].includes(key)) return this.cookie.deconstruct(val);
-         // Not done yet https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Forwarded
-        //if (key == 'forwarded') return val.split(';');
-        else if (key == 'host') return this.pUrl.host;
+        if (key == 'access-control-allow-origin' && !['*', 'null'].includes[val]) return this.bUrl.origin;
+        else if (['host'].includes(key)) return this.pUrl.host;
         else if (key == 'location') return this.url(val);
         else if (key == 'origin' && val != 'null') return this.pUrl.origin;
         else if (key == 'referrer') return deconstructURL(val);
         else if (['set-cookie', 'set-cookie2'].includes(key)) return this.cookie.construct(val);
         else if (key == 'timing-allow-origin' && val != '*') return this.url(val);
-        else if (['x-backend-server', 'x-forwarded-host'].includes(key)) return this.bUrl.host;
         else return val;
     }
 
@@ -68,12 +65,12 @@ module.exports = class {
             if (node.tagname == 'STYLE') this.css(node.textContent);
 
             node.getAttributeNames().forEach(attr => {
-                if (['action', 'content', 'data', 'href', 'poster', 'xlink:href'].includes(attr)) node.setAttribute(attr,this.url(node.getAttribute(attr)));
+                if (['action', 'content', 'data', 'href', 'poster', 'xlink:href'].includes(attr)) node.setAttribute(attr, this.url(node.getAttribute(attr), {type: 'html'}));
                 if (['integrity', 'nonce'].includes(attr)) node.removeAttribute(attr);
                 if (attr == 'style') node.setAttribute(attr, this.css(node.getAttribute(attr))); 
                 if (attr.startsWith('on-')) node.setAttribute(this.js(node.getAttribute(attr)));
                 if (attr == 'srcdoc') node.setAttribute(attr, this.html(node.getAttribute(attr)));
-                if (attr == 'srcset') node.getAttribute(attr).split(', ').map((val, i) => i % 2 && this.url(val)).filter(a => a).join(', ');
+                if (attr == 'srcset') node.getAttribute(attr).split(', ').map((val, i) => i % 2 && this.url(val, {type: 'html'})).filter(a => a).join(', ');
             })
 
             nodejs ? node.getElementsByTagName('head')[0].appendChild(document.createElement('SCRIPT').innerHTML(await minify(fs.readFileSync('rewriter.js')))) : null;
@@ -93,9 +90,6 @@ if (!nodejs) {
     rewriter = new Rewriter();
 
     proxifiedDocument = new Proxy(document, {
-        get: (target, prop) => {
-            prop == 'cookie' ? rewriter.cookie.deconstruct(target) : typeof(prop = Reflect.get(target, prop)) == 'function' ? prop.bind(target) : prop;
-        },
         set: (target, prop) => {
             if (['location', 'referrer', 'URL'].includes(prop)) return rewriter.url(target);
             else if (prop == 'cookie') return rewriter.cookie.construct(target);
@@ -180,7 +174,6 @@ if (!nodejs) {
 
     document.currentScript.remove();
 
-    // WebRTC
     delete window.MediaStreamTrack; 
     delete window.RTCPeerConnection;
     delete window.RTCSessionDescription;

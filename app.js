@@ -12,6 +12,8 @@ module.exports = class {
         Object.assign(globalThis, this);
     };
 
+    static blockedRespHeaders = ['content-*', 'forwarded', 'x-*']
+
     static constructUrl(url) {
         const caller = this.deconstructUrl.caller.name;
         if (caller == 'http') return this.httpPrefix + url;
@@ -31,10 +33,9 @@ module.exports = class {
         if (this.pUrl.protocol == 'https:') this.reqProtocol = https;
         else if (this.pUrl.protocol == 'http:') this.reqProtocol = http;
         else return resp.writeHead(400, 'invalid protocol').end();
-
-        const sendReq = this.reqProtocol.request(this.pUrl.href, {headers: Object.fromEntries(Object.entries(Object.assign({}, req.headers)).map(([key, val]) => [key, rewriter.header(key, val)])), method: req.method, followAllRedirects: false}, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
-            // TODO: Support transfer-encoding too
-            const enc = clientResp.headers['content-encoding'].split('; ')[0];
+        
+        const sendReq = this.reqProtocol.request(this.pUrl.href, {headers: Object.fromEntries(Object.entries(Object.assign({}, req.headers)).map(([key, val]) => this.blockedRespHeaders.includes(key) ? delete [key, val] : [key, rewriter.header(key, val)])), method: req.method, followAllRedirects: false}, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
+            const enc = clientResp.headers['content-encoding'] || clientResp.headers['transfer-encoding'].split('; ')[0];
             if (typeof enc != 'undefined') enc.split(', ').forEach(encType => {
                 if (encType == 'gzip') sendData = zlib.gunzipSync(Buffer.concat(streamData)).toString();
                 else if (encType == 'deflate') sendData = zlib.inflateSync(Buffer.concat(streamData)).toString();
@@ -42,7 +43,7 @@ module.exports = class {
                 else sendData = Buffer.concat(streamData).toString();
             })
 
-            const rewriter = new Rewriter({httpPrefix: this.httpPrefix, bUrl: this.bUrl, pUrl: this.pUrl, contentLength: Buffer.concat(streamData).length});
+            const rewriter = new Rewriter({httpPrefix: this.httpPrefix, bUrl: this.bUrl, pUrl: this.pUrl, blockedRespHeaders: this.blockedRespHeaders});
 
             // TODO: Be coors compliant
             Object.entries(clientResp.headers).forEach((key, val) => resp.setHeader[key, rewriter.header(key, val)]);
@@ -66,10 +67,6 @@ module.exports = class {
         new WebSocket.Server({server: server}).on('connection', (wsClient, req) => {
             this.pUrl = new URL(wsDeconstructUrl(req.url)),
             this.bUrl = new URL(req.protocol + '://' + req.host + this.wsPrefix + this.pUrl.href)
-
-            if (this.pUrl.protocol == 'ws:') this.reqProtocol = https;
-            else if (this.pUrl.protocol == 'ws:') this.reqProtocol = http;
-            else return wsClient.terminate();
 
             let msgParts = [];
 
