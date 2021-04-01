@@ -35,7 +35,7 @@ module.exports = class {
         else return resp.writeHead(400, 'invalid protocol').end();
         
         const sendReq = this.reqProtocol.request(this.pUrl.href, {headers: Object.fromEntries(Object.entries(Object.assign({}, req.headers)).map((key, val) => this.blockedRespHeaders.includes(key) ? delete (key, val) : key, rewriter.header(key, val))), method: req.method, followAllRedirects: false}, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
-            const enc = clientResp.headers['content-encoding'] || clientResp.headers['transfer-encoding'].split('; ')[0];
+            const enc = clientResp.headers('content-encoding') || clientResp.headers('transfer-encoding').split('; ')[0];
             if (typeof enc != 'undefined') enc.split(', ').forEach(encType => {
                 if (encType == 'gzip') sendData = zlib.gunzipSync(Buffer.concat(streamData)).toString();
                 else if (encType == 'deflate') sendData = zlib.inflateSync(Buffer.concat(streamData)).toString();
