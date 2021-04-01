@@ -1,5 +1,6 @@
 {
     "name": "molten",
+    "version": "1.0.0",
     "description": "The truest gateway to evading censorship",
     "main": "app.js",
     "license": "BSD-3-Clause",
