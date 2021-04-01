@@ -1,4 +1,2 @@
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
-
 # Molten
-The truest gateway to evading censorship
+The official proxy of Titanium Network, still being worked on. 
