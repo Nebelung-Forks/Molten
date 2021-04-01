@@ -19,9 +19,8 @@ module.exports = class {
         return url.startsWith(this.prefix) ? this.prefix : this.bUrl.href + url;
     }
 
-    url(val, options = {}) {
-        if (options.mode == 'html') {
-            console.log(val);
+    url(val, option) {
+        if (option == 'html') {
             val = val.split('./').pop();
 
             if (!['http', 'https'].includes(val.split(':')[0]));
@@ -29,14 +28,12 @@ module.exports = class {
             else if (val.startsWith('/')) val = prefix + this.bUrl.origin + val.slice(1);
             else val = prefix + this.bUrl.href.slice(this.pUrl.href.split('/').pop().split('.').length + 1) + val;
 
-            console.log(this.bUrl.href)
-            console.log(val);
             return val;
         } else return this.constructUrl(val);
     }
 
     cookie(expList) {
-        return expList.split(';').map(exp => {
+        return expList.map(exp => {
             const split = exp.split('=');
         
             if (split.length == 2) {
@@ -44,8 +41,8 @@ module.exports = class {
                 if (split[0] == 'path') split[1] = this.bUrl.path;
             }
 
-            return split.join('=')
-        }).join('=');
+            return split.join('=');
+        })
     }
 
     header(key, val) {
@@ -54,7 +51,7 @@ module.exports = class {
         else if (key == 'location') val = this.url(val);
         else if (key == 'origin' && val != 'null') val = this.pUrl.origin;
         else if (key == 'referrer') val = deconstructURL(val);
-        else if (['set-cookie', 'set-cookie2'].includes(key)) val = this.cookie(val.join('')).split('');
+        else if (['set-cookie', 'set-cookie2'].includes(key)) val = this.cookie(val);
         else if (key == 'timing-allow-origin' && val != '*') val = this.url(val);
         return val;
     }
@@ -70,14 +67,16 @@ module.exports = class {
             if (node.tagname == 'STYLE') this.css(node.textContent);
 
             node.getAttributeNames().forEach(attr => {
-                if (['action', 'content', 'data', 'href', 'poster', 'xlink:href'].includes(attr)) node.setAttribute(attr, this.url(node.getAttribute(attr), { mode: 'html' }));
+                if (['action', 'content', 'data', 'href', 'poster', 'xlink:href'].includes(attr)) node.setAttribute(attr, this.url(node.getAttribute(attr), 'html'));
                 if (['integrity', 'nonce'].includes(attr)) node.removeAttribute(attr);
                 if (attr == 'style') node.setAttribute(attr, this.css(node.getAttribute(attr))); 
                 if (attr.startsWith('on-')) node.setAttribute(this.js(node.getAttribute(attr)));
                 if (attr == 'srcdoc') node.setAttribute(attr, this.html(node.getAttribute(attr)));
-                if (attr == 'srcset') node.getAttribute(attr).split(', ').map((val, i) => i % 2 && this.url(val, {type: 'html'})).filter(a => a).join(', ');
+                if (attr == 'srcset') node.getAttribute(attr).split(', ').map((val, i) => i % 2 && this.url(val, 'html')).filter(a => a).join(', ');
             })
 
+            // Doesn't work either
+            // Use teser to minify
             //if (nodejs) node.getElementsByTagName('head')[0].appendChild(dom.window.document.createElement('SCRIPT').innerHTML =  fs.readFileSync('rewriter.js'));
         });
 
@@ -93,7 +92,7 @@ module.exports = class {
 
 if (!nodejs) {
     rewriter = new Rewriter({
-        prefix: location.pathname.split('/')[0], 
+        prefix: location.pathname.split('/')[0].split('').join('/'), 
         pUrl: rewrites.deconstructURL(location.path), 
         bUrl: location.href
     });

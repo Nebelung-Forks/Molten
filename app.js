@@ -25,10 +25,9 @@ module.exports = class {
     http(req, resp) {
         try {
             this.pUrl = new URL(this.deconstructUrl.http(req.url));
-            // This is invalid
-            this.bUrl = new URL(req.protocol + '://' + req.host + this.httpPrefix + this.pUrl.href);
+            this.bUrl = new URL((req.connection.encrypted ? 'https' : !req.connection.encrypted ? 'http' : null) + '://' + req.headers.host + this.httpPrefix + this.pUrl.href);
         } catch (err) {
-            resp.destroy(err);
+            resp.writeHead(200, { 'content-type': 'text/html' }).end(resp.statusCode + err);
         }
 
         if (this.pUrl.protocol == 'https:') this.reqProtocol = https;
@@ -45,17 +44,17 @@ module.exports = class {
                 else sendData = Buffer.concat(streamData).toString();
             })
 
-            let contentType = clientResp.headers['content-type']
-            if (typeof contentType != 'undefined') {
-                contentType.split('; ');
-                if (contentType == 'text/html') sendData = rewriter.html(sendData);
-                if (contentType == 'text/css') sendData = rewriter.css(sendData);
-                if (['text/javascript', 'application/x-javascript', 'application/javascript'].includes(contentType)) sendData = rewriter.js(sendData);
+            const type = clientResp.headers['content-type']
+            if (typeof type != 'undefined') {
+                const directive = type.split('; ')[0];
+                if (directive == 'text/html') sendData = rewriter.html(sendData);
+                if (directive == 'text/css') sendData = rewriter.css(sendData);
+                if (['text/javascript', 'application/x-javascript', 'application/javascript'].includes(directive)) sendData = rewriter.js(sendData);
             }
 
-            resp.writeHead(200, Object.entries(clientResp.headers).filter(([key, val]) => !key.startsWith('content-') && !['forwarded'].includes(key) && !key.startsWith('x-') ? [key, rewriter.header(key, val)] : null));
-
-            resp.end(sendData);
+            resp
+                .writeHead(200, Object.entries(clientResp.headers).filter(([key, val]) => !key.startsWith('content-') && !['forwarded'].includes(key) && !key.startsWith('x-') ? [key, rewriter.header(key, val)] : null))
+                .end(sendData);
         }));
 
         sendReq.on('error', err => resp.destroy(err));
