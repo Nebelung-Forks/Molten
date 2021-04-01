@@ -1,12 +1,23 @@
 {
-    "name": "molten",
-    "version": "1.0.0",
-    "description": "The truest gateway to evading censorship",
-    "main": "app.js",
-    "license": "BSD-3-Clause",
-    "repository": "github:titaniumnetwork-dev/Molten",
-    "dependencies": {
-        "jsdom": "^16.5.2",
-        "ws": "^7.4.4"
-    }
+  "name": "molten",
+  "version": "1.0.0",
+  "description": "The truest gateway to evading censorship",
+  "main": "app.js",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/titaniumnetwork-dev/Molten.git"
+  },
+  "dependencies": {
+    "jsdom": "^16.5.2",
+    "ws": "^7.4.4"
+  },
+  "bugs": {
+    "url": "https://github.com/titaniumnetwork-dev/Molten/issues"
+  },
+  "homepage": "https://github.com/titaniumnetwork-dev/Molten#readme",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Titanium Network"
 }
