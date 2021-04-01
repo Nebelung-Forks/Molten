@@ -7,17 +7,17 @@ const https = require('https'),
 
 module.exports = class {
     constructor(data = {}) {
-        this.httpPrefix = data.wsPrefix;
+        this.httpPrefix = data.httpPrefix;
         this.wsPrefix = data.wsPrefix;
         Object.assign(globalThis, this);
     };
 
-    static constructUrl = {
+    constructUrl = {
         http: (url) => url = this.httpPrefix + url,
         ws: (ws) => url = this.wsPrefix + url
     };
 
-    static deconstructUrl = {
+    deconstructUrl = {
         http: (url) => url = url.slice(this.httpPrefix.length),
         ws: (ws) => url = url.slice(this.wsPrefix.length)
     };
@@ -25,6 +25,7 @@ module.exports = class {
     http(req, resp) {
         try {
             this.pUrl = new URL(this.deconstructUrl.http(req.url));
+            // This is invalid
             this.bUrl = new URL(req.protocol + '://' + req.host + this.httpPrefix + this.pUrl.href);
         } catch (err) {
             resp.destroy(err);
@@ -32,32 +33,32 @@ module.exports = class {
 
         if (this.pUrl.protocol == 'https:') this.reqProtocol = https;
         else if (this.pUrl.protocol == 'http:') this.reqProtocol = http;
-        else return resp.write(`${http.statusCode = 400}, Invalid protocol`).terminate();
-        
-        const sendReq = this.reqProtocol.request(this.pUrl.href, {headers: Object.fromEntries(Object.entries(Object.assign({}, req.headers)).map((key, val) => this.blockedRespHeaders.includes(key) ? delete (key, val) : key, rewriter.header(key, val))), method: req.method, followAllRedirects: false}, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
-            const enc = clientResp.headers('content-encoding') || clientResp.headers('transfer-encoding').split('; ')[0];
-            if (typeof enc != 'undefined') enc.split(', ').forEach(encType => {
+
+        const rewriter = new Rewriter({ httpPrefix: this.httpPrefix, bUrl: this.bUrl, pUrl: this.pUrl });
+
+        const sendReq = this.reqProtocol.request(this.pUrl.href, { headers: Object.entries(req.headers).map(([key, val]) => [key, rewriter.header(key, val)]), method: req.method, followAllRedirects: false }, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
+            const enc = clientResp.headers['content-encoding'] || clientResp.headers['transfer-encoding'];
+            if (typeof enc != 'undefined') enc.split('; ')[0].split(', ').forEach(encType => {
                 if (encType == 'gzip') sendData = zlib.gunzipSync(Buffer.concat(streamData)).toString();
                 else if (encType == 'deflate') sendData = zlib.inflateSync(Buffer.concat(streamData)).toString();
                 else if (encType == 'br') sendData = zlib.brotliDecompressSync(Buffer.concat(streamData)).toString();
                 else sendData = Buffer.concat(streamData).toString();
             })
 
-            const rewriter = new Rewriter({httpPrefix: this.httpPrefix, bUrl: this.bUrl, pUrl: this.pUrl, blockedRespHeaders: this.blockedRespHeaders});
+            let contentType = clientResp.headers['content-type']
+            if (typeof contentType != 'undefined') {
+                contentType.split('; ');
+                if (contentType == 'text/html') sendData = rewriter.html(sendData);
+                if (contentType == 'text/css') sendData = rewriter.css(sendData);
+                if (['text/javascript', 'application/x-javascript', 'application/javascript'].includes(contentType)) sendData = rewriter.js(sendData);
+            }
 
-            resp.setHeader(Object.entries(clientResp.headers).map((key, val) => !key.startsWith('content-') && !['forwarded'].includes(key) && !key.startsWith('x-') ? (key, rewriter.header(key, val)) : delete (key, val)));
-
-            const type = clientResp.headers['content-type'].split('; ')[0];
-            if (type == 'text/html') sendData = rewriter.html(sendData);
-            if (type == 'text/css') sendData = rewriter.css(sendData);
-            if (['text/javascript', 'application/x-javascript', 'application/javascript'].includes(type)) sendData = rewriter.css(sendData);
-
-            resp.statusCode = 200;
+            resp.writeHead(200, Object.entries(clientResp.headers).filter(([key, val]) => !key.startsWith('content-') && !['forwarded'].includes(key) && !key.startsWith('x-') ? [key, rewriter.header(key, val)] : null));
 
             resp.end(sendData);
         }));
 
-        sendReq.on('error', err => resp.writeHead(400, err).end());
+        sendReq.on('error', err => resp.destroy(err));
 
         req.on('data', data => sendReq.write(data)).on('end', () => (sendReq.end()));
     };
