@@ -2,12 +2,12 @@ const nodejs = typeof exports !== 'undefined' && this.exports !== exports
 
 const url = nodejs ? require('url') : null;
 
-module.exports = class {
+nodejs ? module.exports : rewrites = class {
     constructor(data = {}) {
-        this.prefix = nodejs ? data.prefix : location.pathname.split('/')[0], 
-        this.pUrl = nodejs ? data.pUrl : this.deconstructURL(location.path), 
-        this.bUrl = nodejs ? data.bUrl : location.href, 
-        this.contentLength = data.contentLength,
+        this.prefix = data.prefix;
+        this.pUrl = data.pUrl;
+        this.bUrl = data.bUrl;
+        this.contentLength = data.contentLength;
         Object.assign(globalThis, this);
     };
 
@@ -71,7 +71,7 @@ module.exports = class {
                 if (attr == 'srcset') node.getAttribute(attr).split(', ').map((val, i) => i % 2 && this.url(val, {type: 'html'})).filter(a => a).join(', ');
             })
 
-            nodejs ? node.getElementsByTagName('head')[0].appendChild(document.createElement('SCRIPT').innerHTML(await minify(fs.readFileSync('rewriter.js')))) : null;
+            nodejs ? node.getElementsByTagName('head')[0].appendChild(document.createElement('SCRIPT').innerHTML = await minifyfs.readFileSync('rewriter.js').code) : null;
         });
 
         return dom.querySelector('*').outerHTML;
@@ -85,7 +85,11 @@ module.exports = class {
 };
 
 if (!nodejs) {
-    rewriter = new Rewriter();
+    rewriter = new Rewriter({
+        prefix: location.pathname.split('/')[0], 
+        pUrl: rewrites.deconstructURL(location.path), 
+        bUrl: location.href
+    });
 
     proxifiedDocument = new Proxy(document, {
         set: (target, prop) => {

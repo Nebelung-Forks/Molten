@@ -12,27 +12,33 @@ module.exports = class {
         Object.assign(globalThis, this);
     };
 
-    static blockedRespHeaders = ['content-*', 'forwarded', 'x-*']
+    static constructUrl = {
+        http: (url) => url = this.httpPrefix + url,
+        ws: (ws) => url = this.wsPrefix + url
+    };
 
-    static constructUrl(url) {
-        const caller = this.deconstructUrl.caller.name;
-        if (caller == 'http') return this.httpPrefix + url;
-        if (caller == 'ws') return this.wsPrefix + url;
-    }
+    static deconstructUrl = {
+        http: (url) => url = url.slice(this.httpPrefix.length),
+        ws: (ws) => url = url.slice(this.wsPrefix.length)
+    };
 
-    static deconstructUrl(url) {
-        const caller = this.deconstructUrl.caller.name;
-        if (caller == 'http') return url.slice(this.httpPrefix.length);
-        if (caller == 'ws') return url.slice(this.wsPrefix.length);
+    deconstructUrl (url, options = {}) {
+        if (options.protocol == 'http') 
+        if (options.protocol == 'ws') 
+        return url;
     }
 
     http(req, resp) {
-        this.pUrl = new URL(httpDeconstructUrl(req.url));
-        this.bUrl = new URL(req.protocol + '://' + req.host + this.httpPrefix + this.pUrl.href);
+        try {
+            this.pUrl = new URL(this.deconstructUrl.http(req.url));
+            this.bUrl = new URL(req.protocol + '://' + req.host + this.httpPrefix + this.pUrl.href);
+        } catch (err) {
+            resp.destroy(err);
+        }
 
         if (this.pUrl.protocol == 'https:') this.reqProtocol = https;
         else if (this.pUrl.protocol == 'http:') this.reqProtocol = http;
-        else return resp.writeHead(400, 'invalid protocol').end();
+        else return resp.write(`${http.statusCode = 400}, Invalid protocol`).terminate();
         
         const sendReq = this.reqProtocol.request(this.pUrl.href, {headers: Object.fromEntries(Object.entries(Object.assign({}, req.headers)).map((key, val) => this.blockedRespHeaders.includes(key) ? delete (key, val) : key, rewriter.header(key, val))), method: req.method, followAllRedirects: false}, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
             const enc = clientResp.headers('content-encoding') || clientResp.headers('transfer-encoding').split('; ')[0];
@@ -64,8 +70,12 @@ module.exports = class {
 
     ws(server) {
         new WebSocket.Server({server: server}).on('connection', (wsClient, req) => {
-            this.pUrl = new URL(wsDeconstructUrl(req.url)),
-            this.bUrl = new URL(req.protocol + '://' + req.host + this.wsPrefix + this.pUrl.href)
+            try {
+                this.pUrl = new URL(deconstructUrl.ws(req.url)),
+                this.bUrl = new URL(req.protocol + '://' + req.host + this.wsPrefix + this.pUrl.href)
+            } catch (err) {
+                req.terminate(err);
+            }
 
             let msgParts = [];
 
