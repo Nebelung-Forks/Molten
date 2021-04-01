@@ -74,11 +74,13 @@ module.exports = class {
                 if (attr == 'srcdoc') node.setAttribute(attr, this.html(node.getAttribute(attr)));
                 if (attr == 'srcset') node.getAttribute(attr).split(', ').map((val, i) => i % 2 && this.url(val, 'html')).filter(a => a).join(', ');
             })
-
-            // Doesn't work either
-            // Use teser to minify
-            //if (nodejs) node.getElementsByTagName('head')[0].appendChild(dom.window.document.createElement('SCRIPT').innerHTML =  fs.readFileSync('rewriter.js'));
         });
+
+        if (nodejs) {
+            let elm = dom.window.document.createElement('SCRIPT')
+            elm.innerHTML = fs.readFileSync('rewriter.js', 'utf8')
+            dom.window.document.getElementsByTagName('HEAD')[0].appendChild(elm);
+        }
 
         return nodejs ? dom.serialize() : dom.querySelector('*').outerHTML;
     }

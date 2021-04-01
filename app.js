@@ -27,7 +27,9 @@ module.exports = class {
             this.pUrl = new URL(this.deconstructUrl.http(req.url));
             this.bUrl = new URL((req.connection.encrypted ? 'https' : !req.connection.encrypted ? 'http' : null) + '://' + req.headers.host + this.httpPrefix + this.pUrl.href);
         } catch (err) {
-            resp.writeHead(200, { 'content-type': 'text/html' }).end(resp.statusCode + err);
+            resp
+                .writeHead(200, { 'content-type': 'text/plain' })
+                .destroy(err);
         }
 
         if (this.pUrl.protocol == 'https:') this.reqProtocol = https;
@@ -44,7 +46,7 @@ module.exports = class {
                 else sendData = Buffer.concat(streamData).toString();
             })
 
-            const type = clientResp.headers['content-type']
+            const type = clientResp.headers['content-type'];
             if (typeof type != 'undefined') {
                 const directive = type.split('; ')[0];
                 if (directive == 'text/html') sendData = rewriter.html(sendData);
@@ -54,16 +56,21 @@ module.exports = class {
 
             resp
                 .writeHead(200, Object.entries(clientResp.headers).filter(([key, val]) => !key.startsWith('content-') && !['forwarded'].includes(key) && !key.startsWith('x-') ? [key, rewriter.header(key, val)] : null))
-                .end(sendData);
+                .end(sendData)
         }));
 
-        sendReq.on('error', err => resp.destroy(err));
+        sendReq.on('error', err => {
+            resp
+                .writeHead(200, { 'content-type': 'text/plain' })
+                .destroy(err)
+        });
 
-        req.on('data', data => sendReq.write(data)).on('end', () => (sendReq.end()));
+        req.on('data', data => sendReq.write(data))
+            .on('end', () => (sendReq.end()));
     };
 
     ws(server) {
-        new WebSocket.Server({server: server}).on('connection', (wsClient, req) => {
+        new WebSocket.Server({ server: server }).on('connection', (wsClient, req) => {
             try {
                 this.pUrl = new URL(deconstructUrl.ws(req.url)),
                 this.bUrl = new URL(req.protocol + '://' + req.host + this.wsPrefix + this.pUrl.href)
