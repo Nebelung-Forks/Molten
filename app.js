@@ -34,7 +34,7 @@ module.exports = class {
         else if (this.pUrl.protocol == 'http:') this.reqProtocol = http;
         else return resp.writeHead(400, 'invalid protocol').end();
         
-        const sendReq = this.reqProtocol.request(this.pUrl.href, {headers: Object.fromEntries(Object.entries(Object.assign({}, req.headers)).map(([key, val]) => this.blockedRespHeaders.includes(key) ? delete [key, val] : [key, rewriter.header(key, val)])), method: req.method, followAllRedirects: false}, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
+        const sendReq = this.reqProtocol.request(this.pUrl.href, {headers: Object.fromEntries(Object.entries(Object.assign({}, req.headers)).map((key, val) => this.blockedRespHeaders.includes(key) ? delete (key, val) : key, rewriter.header(key, val))), method: req.method, followAllRedirects: false}, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
             const enc = clientResp.headers['content-encoding'] || clientResp.headers['transfer-encoding'].split('; ')[0];
             if (typeof enc != 'undefined') enc.split(', ').forEach(encType => {
                 if (encType == 'gzip') sendData = zlib.gunzipSync(Buffer.concat(streamData)).toString();
@@ -45,7 +45,7 @@ module.exports = class {
 
             const rewriter = new Rewriter({httpPrefix: this.httpPrefix, bUrl: this.bUrl, pUrl: this.pUrl, blockedRespHeaders: this.blockedRespHeaders});
 
-            Object.entries(clientResp.headers).forEach((key, val) => resp.setHeader[key, rewriter.header(key, val)]);
+            resp.setHeader(Object.entries(clientResp.headers).map((key, val) => !key.startsWith('content-') && !['forwarded'].includes(key) && !key.startsWith('x-') ? (key, rewriter.header(key, val)) : delete (key, val)));
 
             const type = clientResp.headers['content-type'].split('; ')[0];
             if (type == 'text/html') sendData = rewriter.html(sendData);
