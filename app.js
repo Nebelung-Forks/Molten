@@ -45,7 +45,6 @@ module.exports = class {
 
             const rewriter = new Rewriter({httpPrefix: this.httpPrefix, bUrl: this.bUrl, pUrl: this.pUrl, blockedRespHeaders: this.blockedRespHeaders});
 
-            // TODO: Be coors compliant
             Object.entries(clientResp.headers).forEach((key, val) => resp.setHeader[key, rewriter.header(key, val)]);
 
             const type = clientResp.headers['content-type'].split('; ')[0];

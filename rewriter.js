@@ -42,8 +42,6 @@ module.exports = class {
     }
 
     header(key, val) {
-        // General information https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers
-        // TODO: Add websocket headers
         if (key == 'access-control-allow-origin' && !['*', 'null'].includes[val]) return this.bUrl.origin;
         else if (['host'].includes(key)) return this.pUrl.host;
         else if (key == 'location') return this.url(val);
