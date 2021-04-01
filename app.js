@@ -22,12 +22,6 @@ module.exports = class {
         ws: (ws) => url = url.slice(this.wsPrefix.length)
     };
 
-    deconstructUrl (url, options = {}) {
-        if (options.protocol == 'http') 
-        if (options.protocol == 'ws') 
-        return url;
-    }
-
     http(req, resp) {
         try {
             this.pUrl = new URL(this.deconstructUrl.http(req.url));
