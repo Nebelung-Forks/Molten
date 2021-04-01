@@ -1,5 +1,5 @@
 {
-  "name": "tn-molten",
+  "name": "@titaniumnetwork/molten",
   "version": "1.0.0",
   "description": "The truest gateway to evading censorship",
   "main": "app.js",
