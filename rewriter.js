@@ -1,35 +1,29 @@
-const nodejs = typeof exports !== 'undefined' && this.exports !== exports
+const nodejs = typeof exports !== 'undefined' && this.exports !== exports;
 
 const url = nodejs ? require('url') : null;
 
-module.exports = class {
+nodejs ? module.exports = class : rewrites {
     constructor(data = {}) {
-        this.prefix = data.prefix;
-        this.pUrl = data.pUrl;
-        this.bUrl = data.bUrl;
-        this.contentLength = data.contentLength;
+        this.prefix = data.prefix, 
+        this.pUrl = data.pUrl,
+        this.bUrl = data.bUrl,
+        this.contentLength = data.contentLength,
         Object.assign(globalThis, this);
     };
 
-    deconstructUrl(url) {
-        return url.slice(url.startsWith(this.prefix) ? this.prefix.length : this.bUrl.href);
-    }
+    deconstructUrl = data => data.slice(data.startsWith(this.prefix) ? this.prefix.length : this.bUrl.href);
 
-    constructUrl(url) {
-        return url.startsWith(this.prefix) ? this.prefix : this.bUrl.href + url;
-    }
+    constructUrl = data => data.startsWith(this.prefix) ? this.prefix : this.bUrl.href + url;
 
-    url(val, option) {
+    url(data, option) {
         if (option == 'html') {
-            val = val.split('./').pop();
+            data.split('./').pop();
 
-            if (!['http', 'https'].includes(val.split(':')[0]));
-            else if (val.startsWith('//')) val = prefix + val.slice(0, 2);
-            else if (val.startsWith('/')) val = prefix + this.bUrl.origin + val.slice(1);
-            else val = prefix + this.bUrl.href.slice(this.pUrl.href.split('/').pop().split('.').length + 1) + val;
-
-            return val;
-        } else return this.constructUrl(val);
+            return !['http', 'https'].includes(data.split(':')[0]) ? data :
+                data.startsWith('//') ? prefix + data.slice(0, 2) :
+                data.startsWith('/') ? prefix + this.bUrl.origin + data.slice(1) :
+                this.prefix + data;
+        } else return this.constructUrl(data);
     }
 
     cookie(expList) {
@@ -37,68 +31,54 @@ module.exports = class {
             const split = exp.split('=');
         
             if (split.length == 2) {
-                if (split[0] == 'domain') split[1] = this.bUrl.hostname;
-                if (split[0] == 'path') split[1] = this.bUrl.path;
+                split[1] = split[0] == 'domain' ? this.bUrl.hostname :
+                    split4[0] == 'path' ? this.bUrl.path : split[1];
             }
 
             return split.join('=');
         })
     }
 
-    header(key, val) {
-        if (key == 'access-control-allow-origin' && !['*', 'null'].includes[val]) val = this.bUrl.origin;
-        else if (['host'].includes(key)) val = this.pUrl.host;
-        else if (key == 'location') val = this.url(val);
-        else if (key == 'origin' && val != 'null') val = this.pUrl.origin;
-        else if (key == 'referrer') val = deconstructURL(val);
-        else if (['set-cookie', 'set-cookie2'].includes(key)) val = this.cookie(val);
-        else if (key == 'timing-allow-origin' && val != '*') val = this.url(val);
-        return val;
-    }
+    header = (key, value) => key == 'access-control-allow-origin' && !['*', 'null'].includes[value] ? this.bUrl.origin :
+        ['host'].includes(key) ? this.pUrl.host :
+        key == 'location' ? this.url(value) :
+        key == 'origin' && value != 'null' ? this.pUrl.origin :
+        key == 'referrer' ? deconstructURL(value) :
+        ['set-cookie', 'set-cookie2'].includes(key) ? this.cookie(value) :
+        key == 'timing-allow-origin' && value != '*' ? this.url(value) : value;
 
-    html(val) {
+    html(data) {
         const jsdom = nodejs ? require('jsdom').JSDOM : null, 
             fs = nodejs ? require('fs') : null, 
             { minify } = nodejs ? require("terser") : null, 
-            dom = nodejs ? new jsdom(val, {contentType: 'text/html'}) : new DOMParser.parseFromString(val, 'text/html');
+            dom = nodejs ? new jsdom(data, {contentType: 'text/html'}) : new DOMParser.parseFromString(data, 'text/html');
 
         dom.window.document.querySelectorAll('*').forEach(node => {
-            if (node.tagname == 'SCRIPT') this.js(node.textContent);
-            if (node.tagname == 'STYLE') this.css(node.textContent);
-
-            node.getAttributeNames().forEach(attr => {
-                if (['action', 'content', 'data', 'href', 'poster', 'xlink:href'].includes(attr)) node.setAttribute(attr, this.url(node.getAttribute(attr), 'html'));
-                if (['integrity', 'nonce'].includes(attr)) node.removeAttribute(attr);
-                if (attr == 'style') node.setAttribute(attr, this.css(node.getAttribute(attr))); 
-                if (attr.startsWith('on-')) node.setAttribute(this.js(node.getAttribute(attr)));
-                if (attr == 'srcdoc') node.setAttribute(attr, this.html(node.getAttribute(attr)));
-                if (attr == 'srcset') node.getAttribute(attr).split(', ').map((val, i) => i % 2 && this.url(val, 'html')).filter(a => a).join(', ');
-            })
+            node.textContent = node.tagname == 'SCRIPT' ? this.js :
+                node.tagname == 'STYLE' ? this.css : node.textContent;
+            
+            node.attributes.forEach(attr => node.setAttribute(attr.name, ['action', 'content', 'data', 'href', 'poster', 'xlink:href'].includes(attr.name) ? this.url(attr.value) :
+                ['integrity', 'nonce'].includes(attr.name) ? null :
+                attr.name == 'style' ? this.css(attr.value) :
+                attr.name.startsWith('on-') ? this.js(attr.value) :
+                attr.name == 'srcdoc' ? this.html(attr.value) :
+                attr.name == 'srcset' ? attr.value.split(', ').map((val, i) => i % 2 && this.url(val, 'html')).filter(a => a).join(', ') : attr.value
+            ));
         });
 
         if (nodejs) {
-            let elm = dom.window.document.createElement('SCRIPT')
-            elm.innerHTML = fs.readFileSync('rewriter.js', 'utf8')
+            // TODO: Minify with terser
+            let elm = dom.window.document.createElement('SCRIPT').innerHTML = fs.readFileSync('rewriter.js', 'utf8');
             dom.window.document.getElementsByTagName('HEAD')[0].appendChild(elm);
         }
 
         return nodejs ? dom.serialize() : dom.querySelector('*').outerHTML;
     }
-    css(val) {
-        return val.replace(/(?<=url\((?<a>["']?)).*?(?=\k<a>\))|(?<=@import *(?<b>"|')).*?(?=\k<b>.*?;)/g, this.pUrl);
-    } 
-    js(val) {
-        return 'let document=proxifiedDocument;' + val; 
-    }
+    css = data => data.replace(/(?<=url\((?<a>["']?)).*?(?=\k<a>\))|(?<=@import *(?<b>"|')).*?(?=\k<b>.*?;)/g, this.pUrl);
+    js = data => 'let document=proxifiedDocument;' + data;
 };
 
 if (!nodejs) {
-    rewriter = new Rewriter({
-        prefix: location.pathname.split('/')[0].split('').join('/'), 
-        pUrl: rewrites.deconstructURL(location.path), 
-        bUrl: location.href
-    });
-
     proxifiedDocument = new Proxy(document, {
         set: (target, prop) => {
             if (['location', 'referrer', 'URL'].includes(prop)) return rewriter.url(target);
@@ -108,10 +88,10 @@ if (!nodejs) {
     });
 
     document.write = new Proxy(document.write, {
-    apply(target, thisArg, args) {
-        args[0] = rewriter.html(args[0]);
+        apply(target, thisArg, args) {
+            args[0] = rewriter.html(args[0]);
 
-            return Reflect.apply(target, thisArg, args);
+                return Reflect.apply(target, thisArg, args);
         }
     });
 
