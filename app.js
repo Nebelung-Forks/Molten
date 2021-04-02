@@ -31,7 +31,6 @@ module.exports = class {
                 .writeHead(200, { 'content-type': 'text/plain' })
                 .destroy(err);
         }
-
         
         const pProtocol = this.pUrl.protocol == 'https:' ? https :
             this.pUrl.protocol == 'http:' ? http : null;

@@ -54,16 +54,16 @@ nodejs ? module.exports = class : rewrites {
             dom = nodejs ? new jsdom(data, {contentType: 'text/html'}) : new DOMParser.parseFromString(data, 'text/html');
 
         dom.window.document.querySelectorAll('*').forEach(node => {
-            node.textContent = node.tagname == 'SCRIPT' ? this.js :
-                node.tagname == 'STYLE' ? this.css : node.textContent;
-            
-            node.attributes.forEach(attr => node.setAttribute(attr.name, ['action', 'content', 'data', 'href', 'poster', 'xlink:href'].includes(attr.name) ? this.url(attr.value) :
-                ['integrity', 'nonce'].includes(attr.name) ? null :
-                attr.name == 'style' ? this.css(attr.value) :
-                attr.name.startsWith('on-') ? this.js(attr.value) :
-                attr.name == 'srcdoc' ? this.html(attr.value) :
-                attr.name == 'srcset' ? attr.value.split(', ').map((val, i) => i % 2 && this.url(val, 'html')).filter(a => a).join(', ') : attr.value
-            ));
+            node
+                .textContent = node.tagname == 'SCRIPT' ? this.js :
+                    node.tagname == 'STYLE' ? this.css : node.textContent
+                .attributes.forEach(attr => node.setAttribute(attr.name, ['action', 'content', 'data', 'href', 'poster', 'xlink:href'].includes(attr.name) ? this.url(attr.value) :
+                    ['integrity', 'nonce'].includes(attr.name) ? null :
+                    attr.name == 'style' ? this.css(attr.value) :
+                    attr.name.startsWith('on-') ? this.js(attr.value) :
+                    attr.name == 'srcdoc' ? this.html(attr.value) :
+                    attr.name == 'srcset' ? attr.value.split(', ').map((val, i) => i % 2 && this.url(val, 'html')).filter(a => a).join(', ') : attr.value
+                ));
         });
 
         if (nodejs) {
@@ -81,9 +81,8 @@ nodejs ? module.exports = class : rewrites {
 if (!nodejs) {
     proxifiedDocument = new Proxy(document, {
         set: (target, prop) => {
-            if (['location', 'referrer', 'URL'].includes(prop)) return rewriter.url(target);
-            else if (prop == 'cookie') return rewriter.cookie.construct(target);
-            else return target;
+            return ['location', 'referrer', 'URL'].includes(prop) ? rewriter.url(target) :
+                prop == 'coookie' ? rewriter.cookie.construct(target) : target
         }
     });
 
@@ -91,7 +90,7 @@ if (!nodejs) {
         apply(target, thisArg, args) {
             args[0] = rewriter.html(args[0]);
 
-                return Reflect.apply(target, thisArg, args);
+            return Reflect.apply(target, thisArg, args);
         }
     });
 
