@@ -63,19 +63,16 @@ module.exports = class {
                     ['text/javascript', 'application/x-javascript', 'application/javascript'].includes(directive) ? rewriter.js : sendData;
             }
 
-            resp
-                .writeHead(200, Object.entries(clientResp.headers).filter(([key, val]) => !['content-encoding', 'content-length', 'forwarded'].includes(key) && !key.startsWith('x-') ? [key, rewriter.header(key, val)] : null))
+            resp.writeHead(200, Object.entries(clientResp.headers).filter(([key, val]) => !['content-encoding', 'content-length', 'forwarded'].includes(key) && !key.startsWith('x-') ? [key, rewriter.header(key, val)] : null))
                 .end(sendData)
         }));
 
         sendReq.on('error', err => {
-            resp
-                .writeHead(200, { 'content-type': 'text/plain' })
+            resp.writeHead(200, { 'content-type': 'text/plain' })
                 .destroy(err)
         });
 
-        req
-            .on('data', data => sendReq.write(data))
+        req.on('data', data => sendReq.write(data))
             .on('end', () => sendReq.end());
     };
 
@@ -90,14 +87,12 @@ module.exports = class {
 
             let msgParts = [];
 
-            sendReq = new WebSocket(this.pUrl.href, { origin: this.pUrl.origin, headers: req.headers })
-                .on('message', msg => wsClient.send(msg))
+            sendReq = new WebSocket(this.pUrl.href, { origin: this.pUrl.origin, headers: req.headers }).on('message', msg => wsClient.send(msg))
                 .on('open', () => sendReq.send(msgParts.join('')))
                 .on('error', () => wsClient.terminate())
                 .on('close', () => wsClient.close());
 
-            wsClient
-                .on('message', msg => sendReq.readyState == WebSocket.open ? sendReq.send(msg) : msgParts.push(msg))
+            wsClient.on('message', msg => sendReq.readyState == WebSocket.open ? sendReq.send(msg) : msgParts.push(msg))
                 .on('error', () => sendReq.terminate())
                 .on('close', () => sendReq.close());
         });
