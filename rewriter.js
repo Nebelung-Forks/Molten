@@ -54,8 +54,7 @@ nodejs ? module.exports = class : rewrites {
             dom = nodejs ? new jsdom(data, {contentType: 'text/html'}) : new DOMParser.parseFromString(data, 'text/html');
 
         dom.window.document.querySelectorAll('*').forEach(node => {
-            node
-                .textContent = node.tagname == 'SCRIPT' ? this.js :
+            node.textContent = node.tagname == 'SCRIPT' ? this.js :
                     node.tagname == 'STYLE' ? this.css : node.textContent
                 .attributes.forEach(attr => node.setAttribute(attr.name, ['action', 'content', 'data', 'href', 'poster', 'xlink:href'].includes(attr.name) ? this.url(attr.value) :
                     ['integrity', 'nonce'].includes(attr.name) ? null :
