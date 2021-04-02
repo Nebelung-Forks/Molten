@@ -2,11 +2,11 @@ const nodejs = typeof exports !== 'undefined' && this.exports !== exports;
 
 const url = nodejs ? require('url') : null;
 
-nodejs ? module.exports = class : rewrites {
+module.exports = class {
     constructor(data = {}) {
-        this.prefix = data.prefix, 
-        this.pUrl = data.pUrl,
+        this.prefix = data.prefix,
         this.bUrl = data.bUrl,
+        this.pUrl = data.pUrl,
         this.contentLength = data.contentLength,
         Object.assign(globalThis, this);
     };
@@ -19,16 +19,16 @@ nodejs ? module.exports = class : rewrites {
         if (option == 'html') {
             data.split('./').pop();
 
-            return !['http', 'https'].includes(data.split(':')[0]) ? data :
-                data.startsWith('//') ? prefix + data.slice(0, 2) :
-                data.startsWith('/') ? prefix + this.bUrl.origin + data.slice(1) :
+            return !['http', 'https'].includes(data.split`:`[0]) ? data :
+                data.startsWith`//` ? prefix + data.slice(0, 2) :
+                data.startsWith`/` ? prefix + this.bUrl.origin + data.slice(1) :
                 this.prefix + data;
         } else return this.constructUrl(data);
     }
 
     cookie(expList) {
         return expList.map(exp => {
-            const split = exp.split('=');
+            const split = exp.split`=`;
         
             if (split.length == 2) {
                 split[1] = split[0] == 'domain' ? this.bUrl.hostname :
@@ -50,39 +50,51 @@ nodejs ? module.exports = class : rewrites {
     html(data) {
         const jsdom = nodejs ? require('jsdom').JSDOM : null, 
             fs = nodejs ? require('fs') : null, 
-            { minify } = nodejs ? require("terser") : null, 
+            { minify } = nodejs ? require('terser') : null, 
             dom = nodejs ? new jsdom(data, {contentType: 'text/html'}) : new DOMParser.parseFromString(data, 'text/html');
 
-        dom.window.document.querySelectorAll('*').forEach(node => {
+        dom.window.document.querySelectorAll`*`.forEach(node => {
             node.textContent = node.tagname == 'SCRIPT' ? this.js :
                     node.tagname == 'STYLE' ? this.css : node.textContent
                 .attributes.forEach(attr => node.setAttribute(attr.name, ['action', 'content', 'data', 'href', 'poster', 'xlink:href'].includes(attr.name) ? this.url(attr.value) :
                     ['integrity', 'nonce'].includes(attr.name) ? null :
                     attr.name == 'style' ? this.css(attr.value) :
-                    attr.name.startsWith('on-') ? this.js(attr.value) :
+                    attr.name.startsWith`on-` ? this.js(attr.value) :
                     attr.name == 'srcdoc' ? this.html(attr.value) :
-                    attr.name == 'srcset' ? attr.value.split(', ').map((val, i) => i % 2 && this.url(val, 'html')).filter(a => a).join(', ') : attr.value
+                    attr.name == 'srcset' ? attr.value.split`, `.map((val, i) => i % 2 && this.url(val, 'html')).filter(a => a).join`, ` : attr.value
                 ));
         });
 
         if (nodejs) {
-            // TODO: Minify with terser
-            let elm = dom.window.document.createElement('SCRIPT').innerHTML = fs.readFileSync('rewriter.js', 'utf8');
-            dom.window.document.getElementsByTagName('HEAD')[0].appendChild(elm);
+            let elm = dom.window.document.createElement`SCRIPT`.innerHTML = (async () => await minify(fs.readFileSync('rewriter.js', 'utf8')
+                .replace(/INSERT_PREFIX/g, this.prefix)
+                .replace(/INSERT_BURL/g, this.bUrl)
+                .replace(/INSERT_PURL/g, this.pUrl)
+
+                .replace(/INSERT_DOM/g, data)
+                ).code)();
+            dom.window.document.getElementsByTagName`HEAD`[0].appendChild(elm);
         }
 
-        return nodejs ? dom.serialize() : dom.querySelector('*').outerHTML;
+        return nodejs ? dom.serialize() : dom.querySelector`*`.outerHTML;
     }
+
     css = data => data.replace(/(?<=url\((?<a>["']?)).*?(?=\k<a>\))|(?<=@import *(?<b>"|')).*?(?=\k<b>.*?;)/g, this.pUrl);
+
     js = data => 'let document=proxifiedDocument;' + data;
 };
 
 if (!nodejs) {
+    const rewriter = new Rewriter({ 
+            prefix: INSERT_PREFIX,
+            bUrl: INSERT_BURL,
+            pUrl: INSERT_PURL
+        }),
+        orig = { dom: INSERT_DOM };
+
     proxifiedDocument = new Proxy(document, {
-        set: (target, prop) => {
-            return ['location', 'referrer', 'URL'].includes(prop) ? rewriter.url(target) :
-                prop == 'coookie' ? rewriter.cookie.construct(target) : target
-        }
+        set: (target, prop) => ['location', 'referrer', 'URL'].includes(prop) ? rewriter.url(target) :
+            prop == 'cookie' ? rewriter.cookie(target) : target
     });
 
     document.write = new Proxy(document.write, {
