@@ -17,7 +17,7 @@ module.exports = class {
 
     url(data, option) {
         if (option == 'html') {
-            data.split('./').pop();
+            data.split`./`.pop();
 
             return !['http', 'https'].includes(data.split`:`[0]) ? data :
                 data.startsWith`//` ? prefix + data.slice(0, 2) :
@@ -35,7 +35,7 @@ module.exports = class {
                     split4[0] == 'path' ? this.bUrl.path : split[1];
             }
 
-            return split.join('=');
+            return split.join`=`;
         })
     }
 
