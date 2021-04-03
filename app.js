@@ -26,26 +26,14 @@ module.exports = class {
                 .destroy(err);
         }
 
-        const clientHeaders = Object.entries(req.headers).map(([key, value]) => {
-                if (key == 'cookie') {
-                    value.map(exp => {
-                        const split = exp.split('=');
-
-                        if (split.length == 2) {
-                            this.originalCookie = split[0] == 'original' ? split[1] : null;
-                        }
-                    });
-                } else return [key, rewriter.header(key, value)]
-            }),
-            rewriter = new Rewriter({
+        const rewriter = new Rewriter({
                 httpPrefix: this.httpPrefix,
                 wsPrefix: this.wsPrefix,
                 baseUrl: this.baseUrl, 
                 clientUrl: this.clientUrl,
-                originalCookie: this.originalCookie
             }), 
             client = (clientProtocol == 'https' ? https : clientProtocol == 'http' ? http : null).request(this.clientUrl.href, { 
-                headers: clientHeaders,
+                headers: Object.entries(req.headers).map(([key, value]) => [key, rewriter.header(key, value)]),
                 method: req.method, 
                 followAllRedirects: false 
             }, (clientResp, streamData = [], sendData = '') => clientResp.on('data', data => streamData.push(data)).on('end', () => {
@@ -81,7 +69,7 @@ module.exports = class {
     ws(server) {
         new WebSocket.Server({ server: server }).on('connection', (client, req) => {
             try {
-                this.baseUrl = new URL(clientProtocol + '://' + req.headers.host),
+                this.baseUrl = new URL(req.headers[] + '://' + req.headers.host),
                 this.clientUrl = new URL(req.url.slice(this.wsPrefix));
             } catch (err) {
                 req.terminate(err);

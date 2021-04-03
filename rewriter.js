@@ -7,29 +7,36 @@ module.exports = class {
         this.wsPrefix = passthrough.wsPrefix,
         this.baseUrl = passthrough.baseUrl,
         this.clientUrl = passthrough.clientUrl,
-        this.originalCookie = passthrough.originalCookie;
 
         Object.assign(globalThis, this);
     };
 
-    cookie(expList) {
-        return expList.map(exp => {
+    static cookie = {
+        get: (expList) => expList.map(exp => {
+            const split = exp.split('=');
+        
+            if (split.length == 2 && split[0] == 'original') this.originalCookie = split[1].replace(/&equiv;/, '=');
+            else return split.join('=');
+        }),
+
+        set: (expList) => expList.map(exp => {
             const split = exp.split('=');
         
             if (split.length == 2) split[1] = split[0] == 'domain' ? this.baseUrl.hostname :
                 split[0] == 'path' ? this.httpPrefix + split[1] :
                 split[1];
 
-            return split.join('=');
+            return split.join('=') + 'original=' + exp.replace(/=/g, '&equiv;');
         })
-    }
+    };
 
     header(key, value) {
         return key == 'access-control-allow-origin' && !['*', 'null'].includes[value] ? this.baseUrl.href :
             ['host'].includes(key) ? this.clientUrl.host :
+            key == 'cookie' ? this.cookie.get(value) :
             key == 'location' || key == 'timing-allow-origin' && value != '*' ? this.baseUrl.href + this.httpPrefix + value :
             key == 'referrer' ? value.slice(this.httpPrefix.length) :
-            ['set-cookie', 'set-cookie2'].includes(key) ? this.cookie(value) :
+            ['set-cookie', 'set-cookie2'].includes(key) ? this.cookie.set(value) :
             value;
     }
 
@@ -68,7 +75,7 @@ module.exports = class {
                 .replace(/INSERT_BASE_URL/g, this.baseUrl)
                 .replace(/INSERT_CLIENT_URL/g, this.clientUrl)
                 .replace(/INSERT_DOM/g, body)
-                .replace(/INSERT_ORIGINAL_COOKIE/g, this.originalCookie),
+                .replace(/INSERT_ORIGINAL_COOKIE/g, this.originalCookie), 
                 { format: { quote_style: 3 } })
                 .code)();
 
@@ -107,7 +114,7 @@ if (!nodejs) {
 
     proxifiedDocument = new Proxy(document, {
         set: (target, prop) => ['location', 'referrer', 'URL'].includes(prop) ? rewriter.url(target) :
-            prop == 'cookie' ? rewriter.cookie(target) : 
+            prop == 'cookie' ? rewriter.cookie.set(target) : 
             target
     });
 
