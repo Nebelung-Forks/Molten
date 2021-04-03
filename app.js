@@ -40,7 +40,7 @@ module.exports = class {
             rewriter = new Rewriter({
                 httpPrefix: this.httpPrefix,
                 wsPrefix: this.wsPrefix,
-                bUrl: this.baseUrl, 
+                baseUrl: this.baseUrl, 
                 clientUrl: this.clientUrl,
                 originalCookie: this.originalCookie
             }), 
