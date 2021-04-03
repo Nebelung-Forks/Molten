@@ -2,97 +2,111 @@ const nodejs = typeof exports !== 'undefined' && this.exports !== exports,
     url = nodejs ? require('url') : null;
 
 module.exports = class {
-    constructor(data = {}) {
-        this.prefix = data.prefix,
-        this.bUrl = data.bUrl,
-        this.pUrl = data.pUrl;
+    constructor(passthrough = {}) {
+        this.httpPrefix = passthrough.httpPrefix,
+        this.wsPrefix = passthrough.wsPrefix,
+        this.baseUrl = passthrough.baseUrl,
+        this.clientUrl = passthrough.clientUrl,
+        this.originalCookie = passthrough.originalCookie;
 
         Object.assign(globalThis, this);
     };
 
-    deconstructUrl = data => data.slice(data.startsWith(this.prefix) ? this.prefix.length : this.bUrl.href);
-
-    constructUrl = data => data.startsWith(this.prefix) ? this.prefix : this.bUrl.href + url;
-
-    url(data, option) {
-        if (option == 'html') {
-            data.split`./`.pop();
-
-            return !['http', 'https'].includes(data.split`:`[0]) ? data :
-                data.startsWith`//` ? prefix + data.slice(0, 2) :
-                data.startsWith`/` ? prefix + this.bUrl.origin + data.slice(1) : this.prefix + data;
-        } else return this.constructUrl(data);
-    }
-
     cookie(expList) {
         return expList.map(exp => {
-            const split = exp.split`=`;
+            const split = exp.split('=');
         
-            if (split.length == 2) {
-                split[1] = split[0] == 'domain' ? this.bUrl.hostname :
-                    split4[0] == 'path' ? this.bUrl.path : split[1];
-            }
+            if (split.length == 2) split[1] = split[0] == 'domain' ? this.baseUrl.hostname :
+                split[0] == 'path' ? this.httpPrefix + split[1] :
+                split[1];
 
-            return split.join`=`;
+            return split.join('=');
         })
     }
 
-    header = (key, value) => key == 'access-control-allow-origin' && !['*', 'null'].includes[value] ? this.bUrl.origin :
-        ['host'].includes(key) ? this.pUrl.host :
-        key == 'location' ? this.url(value) :
-        key == 'origin' && value != 'null' ? this.pUrl.origin :
-        key == 'referrer' ? deconstructURL(value) :
-        ['set-cookie', 'set-cookie2'].includes(key) ? this.cookie(value) :
-        key == 'timing-allow-origin' && value != '*' ? this.url(value) : value;
+    header(key, value) {
+        return key == 'access-control-allow-origin' && !['*', 'null'].includes[value] ? this.baseUrl.href :
+            ['host'].includes(key) ? this.clientUrl.host :
+            key == 'location' || key == 'timing-allow-origin' && value != '*' ? this.baseUrl.href + this.httpPrefix + value :
+            key == 'referrer' ? value.slice(this.httpPrefix.length) :
+            ['set-cookie', 'set-cookie2'].includes(key) ? this.cookie(value) :
+            value;
+    }
 
-    html(data) {
+    html(body) {
         const jsdom = nodejs ? require('jsdom').JSDOM : null, 
             fs = nodejs ? require('fs') : null, 
             { minify } = nodejs ? require('terser') : null, 
-            dom = nodejs ? new jsdom(data, { contentType: 'text/html' }) : new DOMParser.parseFromString(data, 'text/html');
+            dom = nodejs ? new jsdom(body, { contentType: 'text/html' }) : new DOMParser.parseFromString(body, 'text/html');
 
-        dom.window.document.querySelectorAll`*`.forEach(node => {
-            node.textContent = node.tagname == 'SCRIPT' ? this.js :
+        function url(url) {
+            url.split('.').pop();
+
+            return !['http', 'https'].includes(url.split(':')[0]) ? url :
+                url.startsWith('//') ? this.httpPrefix + url.slice(2) :
+                url.startsWith('/') ? this.httpPrefix + this.baseUrl.href + url : 
+                this.httpPrefix + url;
+        }
+
+        dom.window.document.querySelectorAll('*').forEach(node => {
+            node.textContent = node.tagname == 'SCRIPT' ? this.js(node.textContent) :
                     node.tagname == 'STYLE' ? this.css : node.textContent
-                .attributes.forEach(attr => node.setAttribute(attr.name, ['action', 'content', 'data', 'href', 'poster', 'xlink:href'].includes(attr.name) ? this.url(attr.value) :
+                .attributes.forEach(attr => node.setAttribute(attr.name, ['action', 'content', 'data', 'href', 'poster', 'xlink:href'].includes(attr.name) ? this.baseUrl.href + this.httpPrefix + attr.value :
                     ['integrity', 'nonce'].includes(attr.name) ? null :
                     attr.name == 'style' ? this.css(attr.value) :
-                    attr.name.startsWith`on-` ? this.js(attr.value) :
+                    attr.name.startsWith('on-') ? this.js(attr.value) :
                     attr.name == 'srcdoc' ? this.html(attr.value) :
-                    attr.name == 'srcset' ? attr.value.split`, `.map((val, i) => i % 2 && this.url(val, 'html')).join`, ` : attr.value
+                    attr.name == 'srcset' ? attr.value.split(', ').map((val, i) => i % 2 && url(attr.value)).join(', ') :
+                    attr.value
                 ));
         });
 
         if (nodejs) {
-            let elm = dom.window.document.createElement`SCRIPT`.innerHTML = (async () => await minify(fs.readFileSync('rewriter.js', 'utf8')
-                .replace(/INSERT_PREFIX/g, this.prefix)
-                .replace(/INSERT_BURL/g, this.bUrl)
-                .replace(/INSERT_PURL/g, this.pUrl)
-
-                .replace(/INSERT_DOM/g, data)
-                ).code)();
-            dom.window.document.getElementsByTagName`HEAD`[0].appendChild(elm);
+            let elm = dom.window.document.createElement('SCRIPT').innerHTML = (async () => await minify(fs.readFileSync('rewriter.js', 'utf8')
+                .replace(/INSERT_HTTP_PREFIX/g, this.httpPrefix)
+                .replace(/INSERT_WS_PREFIX/g, this.wsPrefix)
+                .replace(/INSERT_BASE_URL/g, this.baseUrl)
+                .replace(/INSERT_CLIENT_URL/g, this.clientUrl)
+                .replace(/INSERT_DOM/g, body)
+                .replace(/INSERT_ORIGINAL_COOKIE/g, this.originalCookie),
+                { format: { quote_style: 3 } })
+                .code)();
+            dom.window.document.getElementsByTagName('HEAD')[0].appendChild(elm);
         }
 
-        return nodejs ? dom.serialize() : dom.querySelector`*`.outerHTML;
+        return nodejs ? dom.serialize() : dom.querySelector('*').outerHTML;
     }
 
-    css = data => data.replace(/(?<=url\((?<a>["']?)).*?(?=\k<a>\))|(?<=@import *(?<b>"|')).*?(?=\k<b>.*?;)/g, this.pUrl);
+    css(body) {
+        return body.replace(/(?<=url\((?<a>["']?)).*?(?=\k<a>\))|(?<=@import *(?<b>"|')).*?(?=\k<b>.*?;)/g, this.baseUrl.href + this.httpPrefix + body);
+    }
 
-    js = data => 'let document=proxifiedDocument;' + data;
+    js(body) {
+        'let document=proxifiedDocument;' + body;
+    }
 };
 
 if (!nodejs) {
-    const rewriter = new Rewriter({ 
-            prefix: INSERT_PREFIX,
-            bUrl: INSERT_BURL,
-            pUrl: INSERT_PURL
+    const passthrough = {
+            httpPrefix: 'INSERT_HTTP_PREFIX',
+            wsPrefix: 'INSERT_WS_PREFIX',
+            baseUrl: INSERT_BASE_URL,
+            clientUrl: INSERT_PROXY_URL,
+            original = {
+                dom: 'INSERT_DOM',
+                cookie: 'INSERT_ORIGINAL_COOKIE'
+            }
+        },
+        rewriter = new Rewriter({
+            httpPrefix: passthrough.httpPrefix,
+            wsPrefix: passthrough.wsPrefix,
+            baseUrl: passthrough.baseUrl,
+            clientUrl: passthrough.clientUrl
         }),
-        orig = { dom: INSERT_DOM };
 
     proxifiedDocument = new Proxy(document, {
         set: (target, prop) => ['location', 'referrer', 'URL'].includes(prop) ? rewriter.url(target) :
-            prop == 'cookie' ? rewriter.cookie(target) :
+            prop == 'cookie' ? rewriter.cookie(target) : 
             target
     });
 
@@ -105,7 +119,7 @@ if (!nodejs) {
     });
 
     window.fetch = new Proxy(window.fetch, {
-        apply(target,thisArg,args) {
+        apply(target, thisArg, args) {
             args[0] = rewriter.url(args[0]);
 
             return Reflect.apply(target, thisArg, args);
@@ -141,7 +155,7 @@ if (!nodejs) {
 
     window.postMessage = new Proxy(window.postMessage, {
         apply(target, thisArg, args) {
-            args[1] = location.origin;
+            args[1] = passthrough.baseUrl.href;
 
             return Reflect.apply(target, thisArg, args);
         }
@@ -149,7 +163,7 @@ if (!nodejs) {
 
     window.WebSocket = new Proxy(window.WebSocket, {
         construct(target, args) {
-            args[0] = rewrites.url(args[0]);
+            args[0] = passthrough.baseUrl.href + passthrough.httpPrefix + args[0];
             
             return Reflect.construct(target, args);
         }
