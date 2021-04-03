@@ -12,9 +12,9 @@ module.exports = class {
         Object.assign(globalThis, this);
     };
 
-    constructUrl = url => url = this.prefix + url;
+    constructUrl = url => this.prefix + url;
 
-    deconstructUrl = url => url = url.slice(this.prefix.length);
+    deconstructUrl = url => url.slice(this.prefix.length);
 
     http(req, resp) {
         try {
@@ -31,8 +31,7 @@ module.exports = class {
             pUrl: this.pUrl
         });
 
-        const sendReq = (this.pUrl.protocol == 'https:' ? https :
-        this.pUrl.protocol == 'http:' ? http : null).request(this.pUrl.href, { 
+        const sendReq = (this.pUrl.protocol == 'https:' ? https : this.pUrl.protocol == 'http:' ? http : null).request(this.pUrl.href, { 
             headers: Object.entries(req.headers).map(([key, val]) => [key, rewriter.header(key, val)]),
             method: req.method, 
             followAllRedirects: false 
@@ -51,10 +50,13 @@ module.exports = class {
                 
                 sendData = directive == 'text/html' ? rewriter.html :
                     directive == 'text/css' ? rewriter.css :
-                    ['text/javascript', 'application/x-javascript', 'application/javascript'].includes(directive) ? rewriter.js : sendData;
+                    ['text/javascript', 'application/x-javascript', 'application/javascript'].includes(directive) ? rewriter.js :
+                    sendData;
             }
 
-            resp.writeHead(200, Object.entries(clientResp.headers).filter(([key, val]) => !['content-encoding', 'content-length', 'forwarded'].includes(key) && !key.startsWith`x-` ? [key, rewriter.header(key, val)] : null))
+            resp.writeHead(200, Object.entries(clientResp.headers).filter(([key, val]) => !['content-encoding', 'content-length', 'forwarded'].includes(key) && !key.startsWith`x-` ? [key, rewriter.header(key, val)] : 
+            null
+            ))
                 .end(sendData)
         }));
 
@@ -77,14 +79,19 @@ module.exports = class {
 
             let msgParts = [];
 
-            sendReq = new WebSocket(this.pUrl.href, { origin: this.pUrl.origin, headers: req.headers }).on('message', msg => wsClient.send(msg))
+            sendReq = new WebSocket(this.pUrl.href, {
+                origin: this.pUrl.origin, 
+                headers: req.headers 
+            }).on('message', msg => wsClient.send(msg))
                 .on('open', () => sendReq.send(msgParts.join('')))
                 .on('error', () => wsClient.terminate())
                 .on('close', () => wsClient.close());
 
-            wsClient.on('message', msg => sendReq.readyState == WebSocket.open ? sendReq.send(msg) : msgParts.push(msg))
-                .on('error', () => sendReq.terminate())
-                .on('close', () => sendReq.close());
+            wsClient.on('message', 
+                msg => sendReq.readyState == WebSocket.open ? sendReq.send(msg) : msgParts.push(msg)
+            )
+            .on('error', () => sendReq.terminate())
+            .on('close', () => sendReq.close());
         });
     };
 }

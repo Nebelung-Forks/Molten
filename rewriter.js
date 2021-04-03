@@ -5,8 +5,8 @@ module.exports = class {
     constructor(data = {}) {
         this.prefix = data.prefix,
         this.bUrl = data.bUrl,
-        this.pUrl = data.pUrl,
-        this.contentLength = data.contentLength,
+        this.pUrl = data.pUrl;
+
         Object.assign(globalThis, this);
     };
 
@@ -20,8 +20,7 @@ module.exports = class {
 
             return !['http', 'https'].includes(data.split`:`[0]) ? data :
                 data.startsWith`//` ? prefix + data.slice(0, 2) :
-                data.startsWith`/` ? prefix + this.bUrl.origin + data.slice(1) :
-                this.prefix + data;
+                data.startsWith`/` ? prefix + this.bUrl.origin + data.slice(1) : this.prefix + data;
         } else return this.constructUrl(data);
     }
 
@@ -60,7 +59,7 @@ module.exports = class {
                     attr.name == 'style' ? this.css(attr.value) :
                     attr.name.startsWith`on-` ? this.js(attr.value) :
                     attr.name == 'srcdoc' ? this.html(attr.value) :
-                    attr.name == 'srcset' ? attr.value.split`, `.map((val, i) => i % 2 && this.url(val, 'html')).filter(a => a).join`, ` : attr.value
+                    attr.name == 'srcset' ? attr.value.split`, `.map((val, i) => i % 2 && this.url(val, 'html')).join`, ` : attr.value
                 ));
         });
 
@@ -93,7 +92,8 @@ if (!nodejs) {
 
     proxifiedDocument = new Proxy(document, {
         set: (target, prop) => ['location', 'referrer', 'URL'].includes(prop) ? rewriter.url(target) :
-            prop == 'cookie' ? rewriter.cookie(target) : target
+            prop == 'cookie' ? rewriter.cookie(target) :
+            target
     });
 
     document.write = new Proxy(document.write, {
