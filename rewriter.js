@@ -1,6 +1,5 @@
-const nodejs = typeof exports !== 'undefined' && this.exports !== exports;
-
-const url = nodejs ? require('url') : null;
+const nodejs = typeof exports !== 'undefined' && this.exports !== exports,
+    url = nodejs ? require('url') : null;
 
 module.exports = class {
     constructor(data = {}) {
@@ -51,7 +50,7 @@ module.exports = class {
         const jsdom = nodejs ? require('jsdom').JSDOM : null, 
             fs = nodejs ? require('fs') : null, 
             { minify } = nodejs ? require('terser') : null, 
-            dom = nodejs ? new jsdom(data, {contentType: 'text/html'}) : new DOMParser.parseFromString(data, 'text/html');
+            dom = nodejs ? new jsdom(data, { contentType: 'text/html' }) : new DOMParser.parseFromString(data, 'text/html');
 
         dom.window.document.querySelectorAll`*`.forEach(node => {
             node.textContent = node.tagname == 'SCRIPT' ? this.js :

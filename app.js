@@ -18,7 +18,7 @@ module.exports = class {
 
     http(req, resp) {
         try {
-            this.pUrl = new URL(this.deconstructUrl.http(req.url)),
+            this.pUrl = new URL(this.deconstructUrl(req.url)),
             this.bUrl = new URL((req.connection.encrypted ? 'https' : !req.connection.encrypted ? 'http' : null) + '://' + req.headers.host + this.prefix + this.pUrl.href);
         } catch (err) {
             resp.writeHead(200, { 'content-type': 'text/plain' })
@@ -31,8 +31,8 @@ module.exports = class {
             pUrl: this.pUrl
         });
 
-        const sendReq = this.pUrl.protocol == 'https:' ? https :
-        this.pUrl.protocol == 'http:' ? http : null.request(this.pUrl.href, { 
+        const sendReq = (this.pUrl.protocol == 'https:' ? https :
+        this.pUrl.protocol == 'http:' ? http : null).request(this.pUrl.href, { 
             headers: Object.entries(req.headers).map(([key, val]) => [key, rewriter.header(key, val)]),
             method: req.method, 
             followAllRedirects: false 
