@@ -71,6 +71,7 @@ module.exports = class {
                 .replace(/INSERT_ORIGINAL_COOKIE/g, this.originalCookie),
                 { format: { quote_style: 3 } })
                 .code)();
+
             dom.window.document.getElementsByTagName('HEAD')[0].appendChild(elm);
         }
 
